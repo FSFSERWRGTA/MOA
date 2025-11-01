@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // ← 상태바 아이콘 색 지정용
 import '../routes/app_router.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,21 +18,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const appBg = Colors.white; // 전체 배경
+    const divider = Color(0xFFE8E8FF); // 상단 구분선 색 (보라 라이트)
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: appBg,
 
       appBar: AppBar(
-        backgroundColor: purple,
-        elevation: 0,
+        backgroundColor: appBg, // 배경이랑 비슷하게(동일)
+        elevation: 0, // 그림자 제거
+        scrolledUnderElevation: 0, // 스크롤 음영 제거(Material3)
+        surfaceTintColor: Colors.transparent, // 업리프트 틴트 제거
+        systemOverlayStyle: SystemUiOverlayStyle.dark, // 상태바 아이콘 어두운색
+        centerTitle: true,
         title: const Text(
           'MOA',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
+          ),
         ),
-        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black87),
         actions: [
           IconButton(
             tooltip: '로그아웃',
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.black87),
             onPressed: () {
               Navigator.pushNamedAndRemoveUntil(
                 context,
@@ -41,11 +53,15 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ],
+        // ↓ 얇은 하단 구분선만
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: divider),
+        ),
       ),
 
       body: RefreshIndicator(
         onRefresh: () async {
-          // TODO: 실제 데이터 새로고침
           await Future<void>.delayed(const Duration(milliseconds: 600));
           if (mounted) setState(() {});
         },
@@ -125,11 +141,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             label: '구독 추가',
                             icon: Icons.add_circle_outline,
                             onTap: () {
-                              // TODO: 구독 추가 화면으로 이동
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('구독 추가 화면으로 이동 예정'),
-                                ),
+                                    content: Text('구독 추가 화면으로 이동 예정')),
                               );
                             },
                           ),
@@ -175,23 +189,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // 하단 네비 + FAB
       bottomNavigationBar: NavigationBar(
+        backgroundColor: appBg, // 네비도 배경과 일치
+        surfaceTintColor: Colors.transparent, // 틴트 제거
         selectedIndex: 0,
-        onDestinationSelected: (i) {
-          // TODO: 다른 탭 연결
-        },
+        onDestinationSelected: (i) {},
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: '홈'),
           NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            label: '내 구독',
-          ),
+              icon: Icon(Icons.receipt_long_outlined), label: '내 구독'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '프로필'),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: 빠른 추가
-        },
+        onPressed: () {},
         backgroundColor: purple,
         label: const Text('빠른 추가', style: TextStyle(color: Colors.white)),
         icon: const Icon(Icons.add, color: Colors.white),
@@ -236,10 +246,8 @@ class _SearchBar extends StatelessWidget {
       decoration: InputDecoration(
         hintText: '서비스/구독 검색',
         prefixIcon: const Icon(Icons.search),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
-        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Colors.black26),
@@ -305,29 +313,22 @@ class _StatCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                    height: 1.1,
-                  ),
+                      fontSize: 12, color: Colors.black54, height: 1.1),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black87,
-                  ),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black87),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
                     style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black45,
-                      height: 1.1,
-                    ),
+                        fontSize: 12, color: Colors.black45, height: 1.1),
                   ),
                 ],
               ],
@@ -380,10 +381,8 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
+        Text(title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const Spacer(),
         TextButton(onPressed: () {}, child: const Text('전체보기')),
       ],
@@ -420,23 +419,15 @@ class _UpcomingTile extends StatelessWidget {
           color: const Color(0xFFEDEBFF),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(
-          Icons.subscriptions_outlined,
-          color: Color(0xFF6F6BFF),
-        ),
+        child:
+            const Icon(Icons.subscriptions_outlined, color: Color(0xFF6F6BFF)),
       ),
-      title: Text(
-        item.service,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
+      title: Text(item.service,
+          style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text('${item.date} • ${item.note}'),
-      trailing: Text(
-        item.price,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      onTap: () {
-        // TODO: 상세 화면 이동
-      },
+      trailing:
+          Text(item.price, style: const TextStyle(fontWeight: FontWeight.w700)),
+      onTap: () {},
     );
   }
 }
