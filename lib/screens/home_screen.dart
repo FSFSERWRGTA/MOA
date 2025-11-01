@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ← 상태바 아이콘 색 지정용
+import 'package:flutter/services.dart';
 import '../routes/app_router.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -12,8 +12,8 @@ class _HomeScreenState extends State<HomeScreen> {
   static const purple = Color(0xFF6F6BFF);
 
   // ---- 대시보드 통계 (샘플) ----
-  int subscriptionCount = 7;
-  int thisMonthSpending = 128000; // 원
+  int subscriptionCount = 3;
+  int thisMonthSpending = 23650; // 원
   DateTime nextBillingDate = DateTime(DateTime.now().year, 11, 5);
 
   @override
@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ],
-        // ↓ 얇은 하단 구분선만
+        // 얇은 하단 구분선만
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: divider),
@@ -90,9 +90,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const _SearchBar(),
                     const SizedBox(height: 20),
 
-                    // ---- 요약 카드 (개선본) ----
+                    // ---- 요약 카드 ----
                     Wrap(
-                      spacing: 12,
+                      spacing: 10,
                       runSpacing: 12,
                       children: [
                         _StatCard(
@@ -190,9 +190,18 @@ class _HomeScreenState extends State<HomeScreen> {
       // 하단 네비 + FAB
       bottomNavigationBar: NavigationBar(
         backgroundColor: appBg, // 네비도 배경과 일치
-        surfaceTintColor: Colors.transparent, // 틴트 제거
-        selectedIndex: 0,
-        onDestinationSelected: (i) {},
+        surfaceTintColor: Colors.transparent,
+        selectedIndex: 0, // 홈 탭
+        onDestinationSelected: (i) {
+          if (i == 0) return; // 이미 홈이면 무시
+          if (i == 1) {
+            // '내 구독' 이동
+            Navigator.pushReplacementNamed(context, Routes.subscriptions);
+          } else if (i == 2) {
+            // 프로필 화면으로 이동
+            Navigator.pushReplacementNamed(context, Routes.profile);
+          }
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: '홈'),
           NavigationDestination(
@@ -200,11 +209,12 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.person_outline), label: '프로필'),
         ],
       ),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {},
-        backgroundColor: purple,
-        label: const Text('빠른 추가', style: TextStyle(color: Colors.white)),
-        icon: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: const Color(0xFFEDEBFF),
+        label: const Text('빠른 추가', style: TextStyle(color: Color(0xFF6F6BFF))),
+        icon: const Icon(Icons.add, color: Color(0xFF6F6BFF)),
       ),
     );
   }
@@ -282,7 +292,7 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: const Color(0xFFF7F7FF),
         borderRadius: BorderRadius.circular(16),
@@ -298,37 +308,51 @@ class _StatCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: const Color(0xFFEDEBFF),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: accent),
+            child: Icon(icon, color: accent, size: 18),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 12, color: Colors.black54, height: 1.1),
+                    fontSize: 11,
+                    color: Colors.black54,
+                    height: 1.1,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black87),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
+                    height: 1.1,
+                  ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontSize: 12, color: Colors.black45, height: 1.1),
+                      fontSize: 11,
+                      color: Colors.black45,
+                      height: 1.1,
+                    ),
                   ),
                 ],
               ],
