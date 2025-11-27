@@ -101,7 +101,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icons.payments_outlined,
                           accent: purple,
                           subtitle: '이번 달 합계',
-                          width: (MediaQuery.of(context).size.width -
+                          width:
+                              (MediaQuery.of(context).size.width -
                                   20 -
                                   20 -
                                   12) /
@@ -113,7 +114,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icons.subscriptions_outlined,
                           accent: purple,
                           subtitle: '활성 구독',
-                          width: (MediaQuery.of(context).size.width -
+                          width:
+                              (MediaQuery.of(context).size.width -
                                   20 -
                                   20 -
                                   12) /
@@ -141,9 +143,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             label: '구독 추가',
                             icon: Icons.add_circle_outline,
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('구독 추가 화면으로 이동 예정')),
+                              Navigator.pushNamed(
+                                context,
+                                Routes.addSubscription,
                               );
                             },
                           ),
@@ -189,23 +191,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // 하단 네비 + FAB
       bottomNavigationBar: NavigationBar(
-        backgroundColor: appBg, // 네비도 배경과 일치
+        backgroundColor: appBg, // 네비와 전체 톤 맞춤
         surfaceTintColor: Colors.transparent,
         selectedIndex: 0, // 홈 탭
         onDestinationSelected: (i) {
           if (i == 0) return; // 이미 홈이면 무시
           if (i == 1) {
-            // '내 구독' 이동
             Navigator.pushReplacementNamed(context, Routes.subscriptions);
           } else if (i == 2) {
-            // 프로필 화면으로 이동
+            Navigator.pushReplacementNamed(context, Routes.recommendations);
+          } else if (i == 3) {
             Navigator.pushReplacementNamed(context, Routes.profile);
           }
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: '홈'),
           NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined), label: '내 구독'),
+            icon: Icon(Icons.receipt_long_outlined),
+            label: '내 구독',
+          ),
+          NavigationDestination(icon: Icon(Icons.star_border), label: '추천'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '프로필'),
         ],
       ),
@@ -256,8 +261,10 @@ class _SearchBar extends StatelessWidget {
       decoration: InputDecoration(
         hintText: '서비스/구독 검색',
         prefixIcon: const Icon(Icons.search),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Colors.black26),
@@ -405,8 +412,10 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
         const Spacer(),
         TextButton(onPressed: () {}, child: const Text('전체보기')),
       ],
@@ -443,14 +452,20 @@ class _UpcomingTile extends StatelessWidget {
           color: const Color(0xFFEDEBFF),
           borderRadius: BorderRadius.circular(12),
         ),
-        child:
-            const Icon(Icons.subscriptions_outlined, color: Color(0xFF6F6BFF)),
+        child: const Icon(
+          Icons.subscriptions_outlined,
+          color: Color(0xFF6F6BFF),
+        ),
       ),
-      title: Text(item.service,
-          style: const TextStyle(fontWeight: FontWeight.w700)),
+      title: Text(
+        item.service,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
       subtitle: Text('${item.date} • ${item.note}'),
-      trailing:
-          Text(item.price, style: const TextStyle(fontWeight: FontWeight.w700)),
+      trailing: Text(
+        item.price,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
       onTap: () {},
     );
   }

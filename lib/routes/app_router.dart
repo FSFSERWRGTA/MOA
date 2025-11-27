@@ -4,6 +4,11 @@ import '../screens/signup_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/subscriptions_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/recommendations_screen.dart';
+import '../screens/add_subscription/add_subscription_start.dart';
+import '../screens/add_subscription/add_subscription_ocr.dart';
+import '../screens/add_subscription/add_subscription_manual.dart';
+import '../screens/add_subscription/add_subscription_confirm.dart';
 
 class Routes {
   static const login = '/login';
@@ -11,6 +16,11 @@ class Routes {
   static const home = '/home';
   static const subscriptions = '/subscriptions';
   static const profile = '/profile';
+  static const recommendations = '/recommendations';
+  static const addSubscription = '/add-subscription';
+  static const addSubscriptionOCR = '/add-subscription-ocr';
+  static const addSubscriptionManual = '/add-subscription-manual';
+  static const addSubscriptionConfirm = '/add-subscription-confirm';
 }
 
 class AppRouter {
@@ -18,16 +28,44 @@ class AppRouter {
     switch (settings.name) {
       case Routes.login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
+
       case Routes.signup:
         return MaterialPageRoute(builder: (_) => const SignupScreen());
+
       case Routes.home:
         return MaterialPageRoute(builder: (_) => const HomeScreen());
+
       case Routes.subscriptions:
         return MaterialPageRoute(builder: (_) => const SubscriptionsScreen());
+
       case Routes.profile:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
+
+      case Routes.recommendations:
+        return MaterialPageRoute(builder: (_) => const RecommendationsScreen());
+
+      case Routes.addSubscription:
+        return MaterialPageRoute(
+          builder: (_) => const AddSubscriptionStartScreen(),
+        );
+
+      case Routes.addSubscriptionOCR:
+        return MaterialPageRoute(
+          builder: (_) => const AddSubscriptionOCRScreen(),
+        );
+
+      case Routes.addSubscriptionManual:
+        return MaterialPageRoute(
+          builder: (_) => const AddSubscriptionManualScreen(),
+        );
+
+      case Routes.addSubscriptionConfirm:
+        final args = settings.arguments as OCRResult;
+        return MaterialPageRoute(
+          builder: (_) => AddSubscriptionConfirmScreen(result: args),
+        );
+
       default:
-        // 정의되지 않은 경로 → 로그인으로 보냄
         return MaterialPageRoute(builder: (_) => const LoginScreen());
     }
   }

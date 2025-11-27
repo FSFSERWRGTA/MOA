@@ -6,6 +6,7 @@ class ProfileScreen extends StatelessWidget {
 
   static const purple = Color(0xFF6F6BFF);
   static const line = Color(0xFFEDEBFF);
+  static const appBg = Colors.white;
 
   // 데모 값
   final String userName = 'kiwoom';
@@ -48,9 +49,9 @@ class ProfileScreen extends StatelessWidget {
             tooltip: '설정',
             icon: const Icon(Icons.settings_outlined, color: Colors.black87),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('설정 화면 준비 중')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('설정 화면 준비 중')));
             },
           ),
         ],
@@ -68,9 +69,9 @@ class ProfileScreen extends StatelessWidget {
           _HeaderCard(
             name: userName,
             onEdit: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('프로필 편집 준비 중')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('프로필 편집 준비 중')));
             },
           ),
           const SizedBox(height: 16),
@@ -98,11 +99,7 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           const _SectionHeader(title: '계정'),
-          _RowTile(
-            icon: Icons.lock_outline,
-            title: '비밀번호/보안',
-            onTap: () {},
-          ),
+          _RowTile(icon: Icons.lock_outline, title: '비밀번호/보안', onTap: () {}),
           _RowTile(
             icon: Icons.notifications_none,
             title: '알림 설정',
@@ -121,19 +118,15 @@ class ProfileScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
           const _SectionHeader(title: '지원'),
-          _RowTile(
-            icon: Icons.help_outline,
-            title: '도움말 / 피드백',
-            onTap: () {},
-          ),
+          _RowTile(icon: Icons.help_outline, title: '도움말 / 피드백', onTap: () {}),
           _RowTile(
             icon: Icons.logout,
             title: '로그아웃',
             destructive: true,
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('로그아웃 준비 중')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('로그아웃 준비 중')));
             },
           ),
         ],
@@ -141,20 +134,31 @@ class ProfileScreen extends StatelessWidget {
 
       /* ───────── 하단 NavigationBar ───────── */
       bottomNavigationBar: NavigationBar(
-        backgroundColor: Colors.white,
+        backgroundColor: appBg,
         surfaceTintColor: Colors.transparent,
-        selectedIndex: 2,
+        selectedIndex: 3, // 프로필 탭(현재 선택된 탭)
         onDestinationSelected: (i) {
           if (i == 0) {
+            // 홈으로 이동
             Navigator.pushReplacementNamed(context, Routes.home);
           } else if (i == 1) {
+            // 내 구독
             Navigator.pushReplacementNamed(context, Routes.subscriptions);
+          } else if (i == 2) {
+            // 추천
+            Navigator.pushReplacementNamed(context, Routes.recommendations);
+          } else if (i == 3) {
+            // 현재 위치 → 아무 것도 안 함
+            return;
           }
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: '홈'),
           NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined), label: '내 구독'),
+            icon: Icon(Icons.receipt_long_outlined),
+            label: '내 구독',
+          ),
+          NavigationDestination(icon: Icon(Icons.star_border), label: '추천'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '프로필'),
         ],
       ),
@@ -190,8 +194,11 @@ class _HeaderCard extends StatelessWidget {
               border: Border.all(color: ProfileScreen.purple, width: 1.5),
             ),
             child: const Center(
-              child:
-                  Icon(Icons.person_outline, color: Colors.black87, size: 30),
+              child: Icon(
+                Icons.person_outline,
+                color: Colors.black87,
+                size: 30,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -199,19 +206,28 @@ class _HeaderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w800)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                const Text('기본 정보 보기',
-                    style: TextStyle(fontSize: 12, color: Colors.black54)),
+                const Text(
+                  '기본 정보 보기',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
               ],
             ),
           ),
           TextButton.icon(
             onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined,
-                size: 18, color: Colors.black87),
+            icon: const Icon(
+              Icons.edit_outlined,
+              size: 18,
+              color: Colors.black87,
+            ),
             label: const Text('편집', style: TextStyle(color: Colors.black87)),
             style: TextButton.styleFrom(
               foregroundColor: Colors.black87,
@@ -253,16 +269,19 @@ class _StatChip extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.black54)),
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w800),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
@@ -281,8 +300,10 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 6),
-      child: Text(title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      ),
     );
   }
 }
@@ -309,8 +330,10 @@ class _RowTile extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 4),
           leading: Icon(icon, color: color),
           title: Text(title, style: TextStyle(color: color)),
-          trailing:
-              const Icon(Icons.chevron_right_rounded, color: Colors.black54),
+          trailing: const Icon(
+            Icons.chevron_right_rounded,
+            color: Colors.black54,
+          ),
           onTap: onTap,
         ),
         const Divider(height: 1, thickness: 1, color: ProfileScreen.line),

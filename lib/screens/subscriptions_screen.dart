@@ -34,29 +34,29 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   @override
   Widget build(BuildContext context) {
     // 검색/필터/정렬(목록용)
-    final visible = _items.where((e) {
-      final hit = e.name.toLowerCase().contains(_query.toLowerCase());
-      final ok = switch (_filter) {
-        '전체' => true,
-        '활성' => e.active,
-        '일시중지' => !e.active,
-        _ => true,
-      };
-      return hit && ok;
-    }).toList()
-      ..sort((a, b) {
-        switch (_sort ?? _kDefaultSort) {
-          case '가격 높은순':
-            final pa = _parseWon(a.price);
-            final pb = _parseWon(b.price);
-            return pb.compareTo(pa);
-          case '이름':
-            return a.name.compareTo(b.name);
-          case '결제일 빠른순':
-          default:
-            return a.nextDate.compareTo(b.nextDate);
-        }
-      });
+    final visible =
+        _items.where((e) {
+          final hit = e.name.toLowerCase().contains(_query.toLowerCase());
+          final ok = switch (_filter) {
+            '전체' => true,
+            '활성' => e.active,
+            '일시중지' => !e.active,
+            _ => true,
+          };
+          return hit && ok;
+        }).toList()..sort((a, b) {
+          switch (_sort ?? _kDefaultSort) {
+            case '가격 높은순':
+              final pa = _parseWon(a.price);
+              final pb = _parseWon(b.price);
+              return pb.compareTo(pa);
+            case '이름':
+              return a.name.compareTo(b.name);
+            case '결제일 빠른순':
+            default:
+              return a.nextDate.compareTo(b.nextDate);
+          }
+        });
 
     // 카테고리별 지출: 이번 달 + 활성만 (검색/필터 무관)
     final now = DateTime.now();
@@ -88,8 +88,10 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         actions: [
           IconButton(
             tooltip: '결제 달력',
-            icon: const Icon(Icons.calendar_today_outlined,
-                color: Colors.black87),
+            icon: const Icon(
+              Icons.calendar_today_outlined,
+              color: Colors.black87,
+            ),
             onPressed: _openCalendarSheet,
           ),
           IconButton(
@@ -107,8 +109,10 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
-          const Text('내 구독',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const Text(
+            '내 구독',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 12),
 
           // 요약 패널
@@ -127,10 +131,13 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
             decoration: InputDecoration(
               hintText: '구독명 검색',
               prefixIcon: const Icon(Icons.search),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -166,8 +173,10 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                 ],
                 child: Row(
                   children: [
-                    Text(_sort ?? _kDefaultSort,
-                        style: const TextStyle(color: Colors.black87)),
+                    Text(
+                      _sort ?? _kDefaultSort,
+                      style: const TextStyle(color: Colors.black87),
+                    ),
                     const SizedBox(width: 4),
                     const Icon(Icons.arrow_drop_down),
                   ],
@@ -179,8 +188,10 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
 
           // 카테고리별 지출 (이번 달 · 활성)
           if (categoryTotals.isNotEmpty) ...[
-            const Text('카테고리별 지출 (이번 달 · 활성)',
-                style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text(
+              '카테고리별 지출 (이번 달 · 활성)',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 10),
             _CategoryBars(data: categoryTotals),
             const SizedBox(height: 18),
@@ -210,30 +221,36 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       bottomNavigationBar: NavigationBar(
         backgroundColor: appBg,
         surfaceTintColor: Colors.transparent,
-        selectedIndex: 1,
+        selectedIndex: 1, // 내 구독 탭
         onDestinationSelected: (i) {
           if (i == 0) {
+            // 홈으로 이동
             Navigator.pushReplacementNamed(context, Routes.home);
           } else if (i == 1) {
-            // 현재 탭: 아무 것도 하지 않음
+            // 현재 페이지: 아무것도 하지 않음
             return;
           } else if (i == 2) {
-            // 프로필로 이동
+            // 추천 페이지로 이동
+            Navigator.pushReplacementNamed(context, Routes.recommendations);
+          } else if (i == 3) {
+            // 프로필 페이지로 이동
             Navigator.pushReplacementNamed(context, Routes.profile);
           }
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: '홈'),
           NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined), label: '내 구독'),
+            icon: Icon(Icons.receipt_long_outlined),
+            label: '내 구독',
+          ),
+          NavigationDestination(icon: Icon(Icons.star_border), label: '추천'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '프로필'),
         ],
       ),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('구독 추가 기능 준비 중')),
-          );
+          Navigator.pushNamed(context, Routes.addSubscription);
         },
         backgroundColor: const Color(0xFFEDEBFF),
         icon: const Icon(Icons.add, color: Color(0xFF6F6BFF)),
@@ -277,9 +294,13 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Center(
-                      child: Text('결제 달력',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w800)),
+                      child: Text(
+                        '결제 달력',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _MiniCalendar(
@@ -288,11 +309,14 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                       onSelect: (d) => setSheet(() => selected = d),
                     ),
                     const SizedBox(height: 12),
-                    Text('선택일 결제 ${itemsOf(selected).length}건',
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      '선택일 결제 ${itemsOf(selected).length}건',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     const SizedBox(height: 8),
-                    ...itemsOf(selected)
-                        .map((e) => _SubCard(item: e, accent: purple)),
+                    ...itemsOf(
+                      selected,
+                    ).map((e) => _SubCard(item: e, accent: purple)),
                   ],
                 ),
               ),
@@ -393,10 +417,15 @@ class _CategoryBars extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                      child: Text(e.key,
-                          style: const TextStyle(fontWeight: FontWeight.w600))),
-                  Text('₩${_formatComma(e.value)}',
-                      style: const TextStyle(color: Colors.black54)),
+                    child: Text(
+                      e.key,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Text(
+                    '₩${_formatComma(e.value)}',
+                    style: const TextStyle(color: Colors.black54),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -410,7 +439,8 @@ class _CategoryBars extends StatelessWidget {
                         color: const Color(0xFFF1F0FF),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                            color: _SubscriptionsScreenState.divider),
+                          color: _SubscriptionsScreenState.divider,
+                        ),
                       ),
                     ),
                     Container(
@@ -450,8 +480,14 @@ class _SubItem {
   final String note;
   final bool active;
   final String category;
-  _SubItem(this.name, this.price, this.nextDate, this.note, this.active,
-      this.category);
+  _SubItem(
+    this.name,
+    this.price,
+    this.nextDate,
+    this.note,
+    this.active,
+    this.category,
+  );
 }
 
 class _SubCard extends StatelessWidget {
@@ -495,19 +531,25 @@ class _SubCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.name,
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(
+                  item.name,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 2),
-                Text('${item.nextDate} • ${item.note} • ${item.category}',
-                    style: const TextStyle(color: Colors.black54)),
+                Text(
+                  '${item.nextDate} • ${item.note} • ${item.category}',
+                  style: const TextStyle(color: Colors.black54),
+                ),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(item.price,
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text(
+                item.price,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -519,9 +561,10 @@ class _SubCard extends StatelessWidget {
                 child: Text(
                   statusText,
                   style: TextStyle(
-                      color: statusColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700),
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -565,11 +608,11 @@ class _SummaryPanel extends StatelessWidget {
   );
 
   Widget _vline() => Container(
-        width: 1,
-        height: 48,
-        margin: const EdgeInsets.symmetric(horizontal: 12),
-        color: _SubscriptionsScreenState.divider,
-      );
+    width: 1,
+    height: 48,
+    margin: const EdgeInsets.symmetric(horizontal: 12),
+    color: _SubscriptionsScreenState.divider,
+  );
 
   Widget _item({
     required IconData icon,
@@ -601,8 +644,10 @@ class _SummaryPanel extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.clip,
-                  strutStyle:
-                      const StrutStyle(height: 1.1, forceStrutHeight: true),
+                  strutStyle: const StrutStyle(
+                    height: 1.1,
+                    forceStrutHeight: true,
+                  ),
                   style: _labelStyle,
                 ),
               ),
@@ -614,8 +659,10 @@ class _SummaryPanel extends StatelessWidget {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  strutStyle:
-                      const StrutStyle(height: 1.1, forceStrutHeight: true),
+                  strutStyle: const StrutStyle(
+                    height: 1.1,
+                    forceStrutHeight: true,
+                  ),
                   style: _valueStyle,
                 ),
               ),
@@ -708,8 +755,11 @@ class _MiniCalendarState extends State<_MiniCalendar> {
   @override
   void initState() {
     super.initState();
-    _visibleMonth =
-        DateTime(widget.initialMonth.year, widget.initialMonth.month, 1);
+    _visibleMonth = DateTime(
+      widget.initialMonth.year,
+      widget.initialMonth.month,
+      1,
+    );
     _selected = DateTime.now();
   }
 
@@ -720,8 +770,11 @@ class _MiniCalendarState extends State<_MiniCalendar> {
 
   @override
   Widget build(BuildContext context) {
-    final firstWeekday = DateTime(_visibleMonth.year, _visibleMonth.month, 1)
-        .weekday; // 1=Mon..7=Sun
+    final firstWeekday = DateTime(
+      _visibleMonth.year,
+      _visibleMonth.month,
+      1,
+    ).weekday; // 1=Mon..7=Sun
     final startOffset = (firstWeekday % 7); // 0=Sun
     final totalDays = _daysInMonth(_visibleMonth);
     final cells = startOffset + totalDays;
@@ -733,8 +786,11 @@ class _MiniCalendarState extends State<_MiniCalendar> {
             IconButton(
               icon: const Icon(Icons.chevron_left),
               onPressed: () => setState(() {
-                _visibleMonth =
-                    DateTime(_visibleMonth.year, _visibleMonth.month - 1, 1);
+                _visibleMonth = DateTime(
+                  _visibleMonth.year,
+                  _visibleMonth.month - 1,
+                  1,
+                );
               }),
             ),
             Expanded(
@@ -748,8 +804,11 @@ class _MiniCalendarState extends State<_MiniCalendar> {
             IconButton(
               icon: const Icon(Icons.chevron_right),
               onPressed: () => setState(() {
-                _visibleMonth =
-                    DateTime(_visibleMonth.year, _visibleMonth.month + 1, 1);
+                _visibleMonth = DateTime(
+                  _visibleMonth.year,
+                  _visibleMonth.month + 1,
+                  1,
+                );
               }),
             ),
           ],
@@ -782,7 +841,8 @@ class _MiniCalendarState extends State<_MiniCalendar> {
             if (i < startOffset) return const SizedBox.shrink();
             final day = i - startOffset + 1;
             final date = DateTime(_visibleMonth.year, _visibleMonth.month, day);
-            final selected = _selected != null &&
+            final selected =
+                _selected != null &&
                 _selected!.year == date.year &&
                 _selected!.month == date.month &&
                 _selected!.day == date.day;
@@ -852,7 +912,9 @@ class _Dow extends StatelessWidget {
         child: Text(
           text,
           style: const TextStyle(
-              color: Colors.black54, fontWeight: FontWeight.w600),
+            color: Colors.black54,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

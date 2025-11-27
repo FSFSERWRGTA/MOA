@@ -58,8 +58,11 @@ class _SignupScreenState extends State<SignupScreen> {
                       CircleAvatar(
                         radius: 28,
                         backgroundColor: Color(0xFFEDEBFF),
-                        child: Icon(Icons.person,
-                            color: Color(0xFF6F6BFF), size: 28),
+                        child: Icon(
+                          Icons.person,
+                          color: Color(0xFF6F6BFF),
+                          size: 28,
+                        ),
                       ),
                       SizedBox(height: 12),
                       Text(
@@ -92,7 +95,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         key: _formKey,
                         onChanged: () => setState(() {}),
                         autovalidateMode:
-                            AutovalidateMode.disabled, // ← 한글 조합 보호
+                            AutovalidateMode.disabled, //  한글 조합 보호
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -100,7 +103,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             TextFormField(
                               controller: _nameCtrl,
                               textInputAction: TextInputAction.next,
-                              keyboardType: TextInputType.name, // ← 이름 키보드
+                              keyboardType: TextInputType.name, // 이름 키보드
                               textCapitalization: TextCapitalization.words,
                               enableSuggestions: true,
                               decoration: _inputDecoration(hint: '실명 입력'),
@@ -108,8 +111,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                 final value = v?.trim() ?? '';
                                 if (value.isEmpty) return '이름을 입력해주세요';
                                 // 한글 완성형 + 자모 + 영문 + 공백 허용
-                                final nameReg =
-                                    RegExp(r'^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z\s]+$');
+                                final nameReg = RegExp(
+                                  r'^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z\s]+$',
+                                );
                                 if (!nameReg.hasMatch(value)) {
                                   return '한글 또는 영문만 입력 가능합니다';
                                 }
@@ -158,8 +162,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                   decoration: _inputDecoration(
                                     hint: '달력에서 선택',
                                     suffix: const Icon(
-                                        Icons.calendar_today_outlined,
-                                        size: 18),
+                                      Icons.calendar_today_outlined,
+                                      size: 18,
+                                    ),
                                   ),
                                   controller: TextEditingController(
                                     text: _birthDate == null
@@ -234,8 +239,10 @@ class _SignupScreenState extends State<SignupScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('이미 계정이 있으신가요? ',
-                          style: TextStyle(color: Colors.black54)),
+                      const Text(
+                        '이미 계정이 있으신가요? ',
+                        style: TextStyle(color: Colors.black54),
+                      ),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: const Text('로그인'),
@@ -269,9 +276,9 @@ class _SignupScreenState extends State<SignupScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: const Color(0xFF6F6BFF),
-                ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: const Color(0xFF6F6BFF)),
           ),
           child: child!,
         );
@@ -284,8 +291,9 @@ class _SignupScreenState extends State<SignupScreen> {
   void _onSubmit() {
     if (!_formKey.currentState!.validate()) return;
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다!')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다!')));
 
     Future.delayed(const Duration(milliseconds: 500), () {
       Navigator.pushReplacementNamed(context, Routes.home);
