@@ -155,7 +155,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: _QuickAction(
                             label: '가격 인상 확인',
                             icon: Icons.trending_up_outlined,
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.pushNamed(context, Routes.priceReport);
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
