@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../routes/app_router.dart';
 
@@ -13,8 +14,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _idCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
 
+  // 로딩 상태를 관리할 변수
+  bool _isLoading = false;
+
+  // 로딩 중이 아닐 때만 버튼이 활성화되도록 수정
   bool get _isValid =>
-      _idCtrl.text.trim().isNotEmpty && _pwCtrl.text.trim().isNotEmpty;
+      !_isLoading &&
+      _idCtrl.text.trim().isNotEmpty &&
+      _pwCtrl.text.trim().isNotEmpty;
 
   @override
   void dispose() {
@@ -106,9 +113,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
-                                onPressed: () {
-                                  // TODO: 비밀번호 찾기 페이지 연결
-                                },
+                                onPressed: _isLoading
+                                    ? null
+                                    : () {
+                                        // TODO: 비밀번호 찾기 페이지 연결
+                                      },
                                 child: const Text(
                                   '비밀번호를 잊으셨나요?',
                                   style: TextStyle(fontSize: 13),
@@ -141,7 +150,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      child: const Text('로그인'),
+                      child: _isLoading
+                          ? const SizedBox.square(
+                              dimension: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 3,
+                              ),
+                            )
+                          : const Text('로그인'),
                     ),
                   ),
 
@@ -156,8 +173,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(color: Colors.black54),
                       ),
                       TextButton(
-                        onPressed: () =>
-                            Navigator.pushNamed(context, Routes.signup),
+                        onPressed: _isLoading
+                            ? null
+                            : () =>
+                                Navigator.pushNamed(context, Routes.signup),
                         child: const Text('회원가입'),
                       ),
                     ],
@@ -172,16 +191,61 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // 로그인 버튼 동작
-  void _onLogin() {
+  Future<void> _onLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('로그인 성공! 홈 화면으로 이동합니다.')));
+    setState(() => _isLoading = true);
 
-    Future.delayed(const Duration(milliseconds: 500), () {
-      Navigator.pushReplacementNamed(context, Routes.home);
-    });
+    try {
+      final enteredId = _idCtrl.text.trim();
+      final enteredPassword = _pwCtrl.text.trim();
+
+      // Firestore에서 사용자가 입력한 아이디로 문서를 찾음
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(enteredId)
+          .get();
+
+      if (userDoc.exists) {
+        // 문서가 존재하면, 저장된 비밀번호와 입력된 비밀번호를 비교
+        final storedPassword = userDoc.data()?['passwd'];
+        if (storedPassword == enteredPassword) {
+          // --- 로그인 성공 ---
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, Routes.home);
+          }
+        } else {
+          // 비밀번호 불일치
+          throw Exception('wrong-password');
+        }
+      } else {
+        // 아이디 (문서) 없음
+        throw Exception('user-not-found');
+      }
+    } catch (e) {
+      // [디버깅] 오류의 실제 원인을 콘솔에 출력!
+      print('로그인 오류 상세: $e');
+
+      String message;
+      // Firebase 관련 오류인지 확인
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        message = 'DB 접근 권한이 없습니다. 보안 규칙을 확인하세요.';
+      } else {
+        // 그 외 모든 오류 (비밀번호 불일치, 사용자 없음, 네트워크 등)
+        message = '아이디 또는 비밀번호가 일치하지 않습니다.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+    } finally {
+      // 성공/실패와 관계없이 로딩 상태 해제
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // 공통 입력 스타일

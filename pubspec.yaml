@@ -1,6 +1,6 @@
 name: moa_app
 description: A new Flutter project.
-publish_to: 'none' 
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -10,12 +10,18 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
   cupertino_icons: ^1.0.8
   flutter_localizations:
     sdk: flutter
 
-  image_picker: ^1.0.7 
-  firebase_core: ^4.2.1
+  image_picker: ^1.0.7
+
+  # Firebase 최신 버전 조합
+  firebase_core: ^3.7.0
+  cloud_firestore: ^5.6.12
+
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
@@ -28,4 +34,3 @@ flutter:
 
   assets:
     - assets/images/
-
