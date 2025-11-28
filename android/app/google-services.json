@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "678664566391",
+    "project_id": "moaproject-1b718",
+    "storage_bucket": "moaproject-1b718.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678664566391:android:6261fa203c8930c8507872",
+        "android_client_info": {
+          "package_name": "com.example.moa_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2oQ1pqmXndKKXBNRtSoywJA0uctG3-54"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
