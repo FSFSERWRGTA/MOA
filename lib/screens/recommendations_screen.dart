@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../routes/app_router.dart';
+import '../services/gemini_service.dart';
 
 // 구독 추천 메인 화면
 // - 하단 탭에서 "구독 추천"을 눌렀을 때 진입하는 페이지
@@ -27,7 +28,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   final List<_RecommendedPlan> _cheaperPlans = [
     _RecommendedPlan(
       logoLetter: 'N',
-      serviceName: 'Netflix 스탠다드 → 베이식',
+      serviceName: 'Netflix 스탠다드 → 베이직',
       price: '₩9,500/월',
       savingLabel: '월 ₩4,000 절감',
       savingPercent: '-29%',
