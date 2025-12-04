@@ -218,7 +218,7 @@ class _PreferenceCard extends StatelessWidget {
 
   static const _modes = ['현재 구독을 더 저렴하게', '새로운 구독 찾기'];
 
-  static const _categories = ['스트리밍', '음악', 'AI 도구', '클라우드', '생산성'];
+  static const _categories = ['ott', 'ai', 'music', 'cloud', 'productivity'];
 
   @override
   Widget build(BuildContext context) {
@@ -376,9 +376,8 @@ class _SummaryPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = highlight
-        ? const Color(0xFF6F6BFF).withOpacity(.08)
-        : Colors.white;
+    final bg =
+        highlight ? const Color(0xFF6F6BFF).withOpacity(.08) : Colors.white;
     final border = highlight
         ? const Color(0xFF6F6BFF)
         : _RecommendationsScreenState.divider;
@@ -610,9 +609,7 @@ class _RecommendationCard extends StatelessWidget {
           const SizedBox(height: 6),
 
           // 핵심 기능 3개
-          ...plan.features
-              .take(3)
-              .map(
+          ...plan.features.take(3).map(
                 (f) => Text(
                   '• $f',
                   maxLines: 1,

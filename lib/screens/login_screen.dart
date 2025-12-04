@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../routes/app_router.dart';
+import '../user_state.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -175,8 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextButton(
                         onPressed: _isLoading
                             ? null
-                            : () =>
-                                Navigator.pushNamed(context, Routes.signup),
+                            : () => Navigator.pushNamed(context, Routes.signup),
                         child: const Text('회원가입'),
                       ),
                     ],
@@ -211,6 +211,9 @@ class _LoginScreenState extends State<LoginScreen> {
         final storedPassword = userDoc.data()?['passwd'];
         if (storedPassword == enteredPassword) {
           // --- 로그인 성공 ---
+          // 로그인 성공 시 전역 변수에 아이디 저장
+          UserState.currentUserId = enteredId;
+
           if (mounted) {
             Navigator.pushReplacementNamed(context, Routes.home);
           }
