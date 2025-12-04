@@ -1,27 +1,71 @@
-import 'package:flutter/material.dart';
-import '../routes/app_router.dart';
+/*
+ * 사용자 정보와 구독 통계를 가져와 보여주는 프로필 화면
+ */
 
-class ProfileScreen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import '../routes/app_router.dart';
+import '../user_state.dart';
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   static const purple = Color(0xFF6F6BFF);
   static const line = Color(0xFFEDEBFF);
   static const appBg = Colors.white;
 
-  // 데모 값
-  final String userName = 'kiwoom';
-  final int activeCount = 3;
-  final int thisMonthSpending = 23650;
+  // DB에서 데이터 가져오는 함수
+  Future<Map<String, dynamic>> _fetchProfileData() async {
+    final uid = UserState.currentUserId;
 
-  String _formatWon(int v) {
-    final s = v.toString();
-    final b = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      b.write(s[i]);
-      final left = s.length - i - 1;
-      if (left % 3 == 0 && left != 0) b.write(',');
+    // 비회원일 경우 기본값 반환
+    if (uid == null) {
+      return {'name': '게스트', 'count': 0, 'spending': 0};
     }
-    return '₩${b.toString()}';
+
+    try {
+      // 사용자 정보 가져오기 (users 컬렉션)
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      // DB에 'name' 필드가 없으면 '사용자'로 표시
+      final String name = userDoc.data()?['name'] ?? '사용자';
+
+      // 구독 목록 가져와서 통계 내기 (subscriptions 서브 컬렉션)
+      final subDocs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('subscriptions')
+          .get();
+
+      int count = subDocs.docs.length; // 구독 개수
+      int totalSpending = 0; // 총 지출액
+
+      for (var doc in subDocs.docs) {
+        final amount = (doc.data()['amount'] as num?)?.toInt() ?? 0;
+        totalSpending += amount;
+      }
+
+      return {
+        'name': name,
+        'count': count,
+        'spending': totalSpending,
+      };
+    } catch (e) {
+      // 에러 발생 시 기본값 반환 (혹은 에러 처리)
+      print("프로필 로딩 에러: $e");
+      return {'name': '오류 발생', 'count': 0, 'spending': 0};
+    }
+  }
+
+  // 금액 포맷팅 (예: 13,500원)
+  String _formatWon(int v) {
+    return NumberFormat("#,###").format(v) + '원';
   }
 
   @override
@@ -49,9 +93,9 @@ class ProfileScreen extends StatelessWidget {
             tooltip: '설정',
             icon: const Icon(Icons.settings_outlined, color: Colors.black87),
             onPressed: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('설정 화면 준비 중')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('설정 화면 준비 중')),
+              );
             },
           ),
         ],
@@ -61,95 +105,120 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
 
-      /* ───────── 본문 ───────── */
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        children: [
-          // 사용자 헤더 (화이트 + 라인만)
-          _HeaderCard(
-            name: userName,
-            onEdit: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('프로필 편집 준비 중')));
-            },
-          ),
-          const SizedBox(height: 16),
+      /* ───────── 본문 (FutureBuilder 적용) ───────── */
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _fetchProfileData(), // 데이터 로딩 함수 실행
+        builder: (context, snapshot) {
+          // 1. 로딩 중
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          // 2. 에러 발생
+          if (snapshot.hasError) {
+            return Center(child: Text("데이터를 불러올 수 없습니다.\n${snapshot.error}"));
+          }
 
-          // 요약
-          Row(
+          // 3. 데이터 도착
+          final data =
+              snapshot.data ?? {'name': '알 수 없음', 'count': 0, 'spending': 0};
+          final String userName = data['name'];
+          final int activeCount = data['count'];
+          final int thisMonthSpending = data['spending'];
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             children: [
-              Expanded(
-                child: _StatChip(
-                  title: '이번 달 지출',
-                  value: _formatWon(thisMonthSpending),
-                  icon: Icons.payments_outlined,
-                ),
+              // 사용자 헤더
+              _HeaderCard(
+                name: userName,
+                onEdit: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('프로필 편집 준비 중')),
+                  );
+                },
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _StatChip(
-                  title: '활성 구독',
-                  value: '$activeCount개',
-                  icon: Icons.subscriptions_outlined,
-                ),
+              const SizedBox(height: 16),
+
+              // 요약 통계 (DB 데이터 반영)
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatChip(
+                      title: '이번 달 지출',
+                      value: _formatWon(thisMonthSpending),
+                      icon: Icons.payments_outlined,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatChip(
+                      title: '활성 구독',
+                      value: '$activeCount개',
+                      icon: Icons.subscriptions_outlined,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              const _SectionHeader(title: '계정'),
+              _RowTile(
+                  icon: Icons.lock_outline, title: '비밀번호/보안', onTap: () {}),
+              _RowTile(
+                icon: Icons.notifications_none,
+                title: '알림 설정',
+                onTap: () {},
+              ),
+              _RowTile(
+                icon: Icons.credit_card_outlined,
+                title: '결제 수단',
+                onTap: () {},
+              ),
+              _RowTile(
+                icon: Icons.file_download_outlined,
+                title: '데이터 내보내기',
+                onTap: () {},
+              ),
+
+              const SizedBox(height: 12),
+              const _SectionHeader(title: '지원'),
+              _RowTile(
+                  icon: Icons.help_outline, title: '도움말 / 피드백', onTap: () {}),
+
+              // 로그아웃 기능
+              _RowTile(
+                icon: Icons.logout,
+                title: '로그아웃',
+                destructive: true,
+                onTap: () {
+                  // 로그아웃 로직: ID 지우고 로그인 화면으로 이동
+                  UserState.currentUserId = null;
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    Routes.login,
+                    (_) => false, // 뒤로가기 불가능하게 모든 라우트 제거
+                  );
+                },
               ),
             ],
-          ),
-          const SizedBox(height: 24),
-
-          const _SectionHeader(title: '계정'),
-          _RowTile(icon: Icons.lock_outline, title: '비밀번호/보안', onTap: () {}),
-          _RowTile(
-            icon: Icons.notifications_none,
-            title: '알림 설정',
-            onTap: () {},
-          ),
-          _RowTile(
-            icon: Icons.credit_card_outlined,
-            title: '결제 수단',
-            onTap: () {},
-          ),
-          _RowTile(
-            icon: Icons.file_download_outlined,
-            title: '데이터 내보내기',
-            onTap: () {},
-          ),
-
-          const SizedBox(height: 12),
-          const _SectionHeader(title: '지원'),
-          _RowTile(icon: Icons.help_outline, title: '도움말 / 피드백', onTap: () {}),
-          _RowTile(
-            icon: Icons.logout,
-            title: '로그아웃',
-            destructive: true,
-            onTap: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('로그아웃 준비 중')));
-            },
-          ),
-        ],
+          );
+        },
       ),
 
       /* ───────── 하단 NavigationBar ───────── */
       bottomNavigationBar: NavigationBar(
         backgroundColor: appBg,
         surfaceTintColor: Colors.transparent,
-        selectedIndex: 3, // 프로필 탭(현재 선택된 탭)
+        selectedIndex: 3, // 프로필 탭
         onDestinationSelected: (i) {
           if (i == 0) {
-            // 홈으로 이동
             Navigator.pushReplacementNamed(context, Routes.home);
           } else if (i == 1) {
-            // 내 구독
             Navigator.pushReplacementNamed(context, Routes.subscriptions);
           } else if (i == 2) {
-            // 추천
             Navigator.pushReplacementNamed(context, Routes.recommendations);
           } else if (i == 3) {
-            // 현재 위치 → 아무 것도 안 함
-            return;
+            return; // 현재 탭 유지
           }
         },
         destinations: const [
@@ -181,7 +250,7 @@ class _HeaderCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: const Border.fromBorderSide(
-          BorderSide(color: ProfileScreen.line),
+          BorderSide(color: Color(0xFFEDEBFF)), // static 상수 대신 직접 값 사용
         ),
       ),
       child: Row(
@@ -191,7 +260,7 @@ class _HeaderCard extends StatelessWidget {
             height: 64,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ProfileScreen.purple, width: 1.5),
+              border: Border.all(color: const Color(0xFF6F6BFF), width: 1.5),
             ),
             child: const Center(
               child: Icon(
@@ -258,7 +327,7 @@ class _StatChip extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: const Border.fromBorderSide(
-          BorderSide(color: ProfileScreen.line),
+          BorderSide(color: Color(0xFFEDEBFF)),
         ),
       ),
       child: Row(
@@ -336,7 +405,7 @@ class _RowTile extends StatelessWidget {
           ),
           onTap: onTap,
         ),
-        const Divider(height: 1, thickness: 1, color: ProfileScreen.line),
+        const Divider(height: 1, thickness: 1, color: Color(0xFFEDEBFF)),
       ],
     );
   }
