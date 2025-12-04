@@ -100,9 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           value: _formatWon(thisMonthSpending),
                           icon: Icons.payments_outlined,
                           accent: purple,
-                          subtitle: '이번 달 합계',
-                          width:
-                              (MediaQuery.of(context).size.width -
+                          subtitle: '활성 합계',
+                          width: (MediaQuery.of(context).size.width -
                                   20 -
                                   20 -
                                   12) /
@@ -114,8 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icons.subscriptions_outlined,
                           accent: purple,
                           subtitle: '활성 구독',
-                          width:
-                              (MediaQuery.of(context).size.width -
+                          width: (MediaQuery.of(context).size.width -
                                   20 -
                                   20 -
                                   12) /
@@ -133,7 +131,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     const SizedBox(height: 22),
-                    const _SectionHeader(title: '빠른 작업'),
+                    const _SectionHeader(
+                      title: '빠른 작업',
+                      showMore: false,
+                    ),
 
                     // 빠른 작업 버튼 3개
                     Row(
@@ -215,13 +216,6 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.star_border), label: '추천'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '프로필'),
         ],
-      ),
-
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
-        backgroundColor: const Color(0xFFEDEBFF),
-        label: const Text('빠른 추가', style: TextStyle(color: Color(0xFF6F6BFF))),
-        icon: const Icon(Icons.add, color: Color(0xFF6F6BFF)),
       ),
     );
   }
@@ -407,8 +401,9 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
+  const _SectionHeader({required this.title, this.showMore = true});
   final String title;
+  final bool showMore;
 
   @override
   Widget build(BuildContext context) {
@@ -419,7 +414,7 @@ class _SectionHeader extends StatelessWidget {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const Spacer(),
-        TextButton(onPressed: () {}, child: const Text('전체보기')),
+        if (showMore) TextButton(onPressed: () {}, child: const Text('전체보기')),
       ],
     );
   }

@@ -38,7 +38,7 @@ class _AddSubscriptionManualScreenState
 
   // === 선택지 데이터 ===
   final _cycles = ["day", "week", "month", "year"];
-  final _categories = ["ott", "ai", "music", "cloud", "productivity"];
+  final _categories = ["OTT", "AI 툴", "음악", "클라우드", "생산성"];
 
   // === 상태 변수 ===
   String billingCycle = "month";
