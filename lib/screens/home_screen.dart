@@ -1,6 +1,23 @@
+/*
+ * 앱의 메인 대시보드 화면으로, 사용자의 구독 현황을 나타냄
+ *
+ * [주요 기능 및 로직]
+ * 1. 실시간 데이터 연동 (StreamBuilder):
+ * - Firestore의 users/{uid}/subscriptions 컬렉션을 실시간으로 감시
+ * - 데이터가 변경(추가/수정/삭제)되면 화면이 즉시 자동으로 갱신
+ *
+ * 2. 대시보드 통계 자동 계산 (Client-side Logic):
+ * - 구독 수: 전체 문서의 개수 (docs.length)
+ * - 이번 달 지출: 모든 구독의 결제 금액(amount)을 합산
+ * - 다음 결제일: nextRenewalAt 기준으로 정렬하여 가장 빠른 날짜의 D-Day 표시
+ */
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../routes/app_router.dart';
+import '../user_state.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,11 +27,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const purple = Color(0xFF6F6BFF);
-
-  // ---- 대시보드 통계 (샘플) ----
-  int subscriptionCount = 3;
-  int thisMonthSpending = 23650; // 원
-  DateTime nextBillingDate = DateTime(DateTime.now().year, 11, 5);
 
   @override
   Widget build(BuildContext context) {
@@ -60,136 +72,177 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future<void>.delayed(const Duration(milliseconds: 600));
-          if (mounted) setState(() {});
-        },
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 인사 & 검색
-                    const Text(
-                      '안녕하세요 👋',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '오늘도 구독/지출을 똑똑하게 관리해볼까요?',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                    const SizedBox(height: 16),
-                    const _SearchBar(),
-                    const SizedBox(height: 20),
+      body: StreamBuilder<QuerySnapshot>(
+        // 1. DB에서 '다음 결제일' 순서로 구독 목록 가져오기
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(UserState.currentUserId) // 로그인한 ID
+            .collection('subscriptions')
+            .orderBy('nextRenewalAt')
+            .snapshots(),
+        builder: (context, snapshot) {
+          // (A) 로딩 중일 때
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          // (B) 에러 났을 때
+          if (snapshot.hasError) {
+            return Center(child: Text('오류가 발생했습니다: ${snapshot.error}'));
+          }
 
-                    // ---- 요약 카드 ----
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 12,
+          // (C) 데이터 계산 (Dashboard 로직)
+          final docs = snapshot.data?.docs ?? [];
+
+          // 1. 구독 개수
+          final int count = docs.length;
+
+          // 2. 이번 달 지출 합계 (모든 항목의 amount 더하기)
+          int totalSpending = 0;
+          for (var doc in docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final amount = (data['amount'] as num?)?.toInt() ?? 0;
+            totalSpending += amount;
+          }
+
+          // 3. 다음 결제일 (정렬했으므로 첫 번째 문서가 가장 빠름)
+          DateTime? nextBill;
+          if (docs.isNotEmpty) {
+            final firstData = docs.first.data() as Map<String, dynamic>;
+            if (firstData['nextRenewalAt'] != null) {
+              nextBill = (firstData['nextRenewalAt'] as Timestamp).toDate();
+            }
+          }
+
+          // (D) 화면 구성
+          return RefreshIndicator(
+            onRefresh: () async {
+              await Future<void>.delayed(const Duration(milliseconds: 600));
+            },
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _StatCard(
-                          title: '이번 달 지출',
-                          value: _formatWon(thisMonthSpending),
-                          icon: Icons.payments_outlined,
-                          accent: purple,
-                          subtitle: '활성 합계',
-                          width: (MediaQuery.of(context).size.width -
-                                  20 -
-                                  20 -
-                                  12) /
-                              2,
+                        const Text('안녕하세요 👋',
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        const Text('오늘도 구독/지출을 똑똑하게 관리해볼까요?',
+                            style: TextStyle(color: Colors.black54)),
+                        const SizedBox(height: 16),
+                        const _SearchBar(),
+                        const SizedBox(height: 20),
+
+                        // ---- 자동 계산된 값 넣기) 요약 카드 ----
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 12,
+                          children: [
+                            _StatCard(
+                              title: '이번 달 지출',
+                              value: _formatWon(totalSpending), // DB 합계
+                              icon: Icons.payments_outlined,
+                              accent: purple,
+                              subtitle: '이번 달 합계',
+                              width:
+                                  (MediaQuery.of(context).size.width - 52) / 2,
+                            ),
+                            _StatCard(
+                              title: '구독 수',
+                              value: '$count개', // DB 개수
+                              icon: Icons.subscriptions_outlined,
+                              accent: purple,
+                              subtitle: '활성 구독',
+                              width:
+                                  (MediaQuery.of(context).size.width - 52) / 2,
+                            ),
+                            _StatCard(
+                              title: '다음 결제',
+                              value: nextBill != null
+                                  ? _formatDate(nextBill)
+                                  : '-', // DB 날짜
+                              icon: Icons.event_available_outlined,
+                              accent: purple,
+                              subtitle:
+                                  nextBill != null ? _dDay(nextBill) : '예정 없음',
+                              width: MediaQuery.of(context).size.width - 40,
+                            ),
+                          ],
                         ),
-                        _StatCard(
-                          title: '구독 수',
-                          value: '$subscriptionCount개',
-                          icon: Icons.subscriptions_outlined,
-                          accent: purple,
-                          subtitle: '활성 구독',
-                          width: (MediaQuery.of(context).size.width -
-                                  20 -
-                                  20 -
-                                  12) /
-                              2,
+
+                        const SizedBox(height: 22),
+                        // 빠른 작업 (버튼 숨김 옵션 적용)
+                        const _SectionHeader(title: '빠른 작업', showMore: false),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _QuickAction(
+                                label: '구독 추가',
+                                icon: Icons.add_circle_outline,
+                                onTap: () => Navigator.pushNamed(
+                                    context, Routes.addSubscription),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: _QuickAction(
+                                    label: '가격 인상 확인',
+                                    icon: Icons.trending_up_outlined,
+                                    onTap: () {
+                                      Navigator.pushNamed(
+                                          context, Routes.priceReport);
+                                    })),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: _QuickAction(
+                                    label: '리포트',
+                                    icon: Icons.bar_chart_outlined,
+                                    onTap: () {})),
+                          ],
                         ),
-                        _StatCard(
-                          title: '다음 결제',
-                          value: _formatDate(nextBillingDate),
-                          icon: Icons.event_available_outlined,
-                          accent: purple,
-                          subtitle: _dDay(nextBillingDate), // D-day 표기
-                          width: MediaQuery.of(context).size.width - 20 - 20,
+
+                        const SizedBox(height: 22),
+                        _SectionHeader(
+                          title: '다가오는 결제',
+                          onTap: () {
+                            Navigator.pushReplacementNamed(
+                                context, Routes.subscriptions);
+                          },
                         ),
                       ],
                     ),
-
-                    const SizedBox(height: 22),
-                    const _SectionHeader(
-                      title: '빠른 작업',
-                      showMore: false,
-                    ),
-
-                    // 빠른 작업 버튼 3개
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _QuickAction(
-                            label: '구독 추가',
-                            icon: Icons.add_circle_outline,
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                Routes.addSubscription,
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _QuickAction(
-                            label: '가격 인상 확인',
-                            icon: Icons.trending_up_outlined,
-                            onTap: () {
-                              Navigator.pushNamed(context, Routes.priceReport);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _QuickAction(
-                            label: '리포트',
-                            icon: Icons.bar_chart_outlined,
-                            onTap: () {},
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 22),
-                    const _SectionHeader(title: '다가오는 결제'),
-                  ],
+                  ),
                 ),
-              ),
-            ),
 
-            // 다가오는 결제 리스트
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => _UpcomingTile(item: _upcoming[i]),
-                childCount: _upcoming.length,
-              ),
-            ),
+                // ---- 실제 데이터 리스트 ----
+                if (docs.isEmpty)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: Text("등록된 구독이 없어요.")),
+                    ),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) {
+                        // DB 데이터를 가져와서 타일 위젯에 넘깁니다.
+                        final data = docs[i].data() as Map<String, dynamic>;
+                        return _UpcomingTile(data: data);
+                      },
+                      childCount: docs.length,
+                    ),
+                  ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
-        ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
+            ),
+          );
+        },
       ),
 
       // 하단 네비 + FAB
@@ -401,9 +454,14 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, this.showMore = true});
+  const _SectionHeader({
+    required this.title,
+    this.showMore = true,
+    this.onTap,
+  });
   final String title;
   final bool showMore;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -414,34 +472,39 @@ class _SectionHeader extends StatelessWidget {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const Spacer(),
-        if (showMore) TextButton(onPressed: () {}, child: const Text('전체보기')),
+        if (showMore) TextButton(onPressed: onTap, child: const Text('전체보기')),
       ],
     );
   }
 }
 
-class UpcomingItem {
-  final String service;
-  final String date; // mm-dd
-  final String price; // ₩xx,xxx
-  final String note;
-  UpcomingItem(this.service, this.date, this.price, this.note);
-}
-
-final _upcoming = <UpcomingItem>[
-  UpcomingItem('Netflix', '11-05', '₩9,500', '베이식 요금제'),
-  UpcomingItem('YouTube Premium', '11-08', '₩10,450', '개인'),
-  UpcomingItem('iCloud 200GB', '11-10', '₩3,700', '스토리지'),
-];
-
+// DB 데이터 받아서 보여주는 타일 위젯
 class _UpcomingTile extends StatelessWidget {
-  const _UpcomingTile({required this.item});
-  final UpcomingItem item;
+  const _UpcomingTile({required this.data});
+  final Map<String, dynamic> data;
 
   @override
   Widget build(BuildContext context) {
+    // 데이터 꺼내기 - null 안전 처리
+    final String serviceName = data['providerName'] ?? '이름 없음';
+    final int amount = (data['amount'] as num?)?.toInt() ?? 0;
+    final String planName = data['planName'] ?? '기본 요금제';
+
+    // 날짜 변환 (Firestore Timestamp -> DateTime -> String)
+    String dateStr = '날짜 미정';
+    if (data['nextRenewalAt'] != null) {
+      final date = (data['nextRenewalAt'] as Timestamp).toDate();
+      // "11-05" 형식으로 포맷팅
+      dateStr =
+          '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    }
+
+    // 금액 콤마 찍기 (17000 -> 17,000)
+    final priceStr = NumberFormat("#,###").format(amount);
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+      // 아이콘 박스
       leading: Container(
         width: 44,
         height: 44,
@@ -454,13 +517,16 @@ class _UpcomingTile extends StatelessWidget {
           color: Color(0xFF6F6BFF),
         ),
       ),
+      // 서비스명
       title: Text(
-        item.service,
+        serviceName,
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
-      subtitle: Text('${item.date} • ${item.note}'),
+      // 날짜 및 요금제
+      subtitle: Text('$dateStr • $planName'),
+      // 금액
       trailing: Text(
-        item.price,
+        '₩$priceStr',
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
       onTap: () {},
