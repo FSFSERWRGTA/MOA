@@ -201,7 +201,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: _QuickAction(
                                     label: '리포트',
                                     icon: Icons.bar_chart_outlined,
-                                    onTap: () {})),
+                                    onTap: () {
+                                      Navigator.pushNamed(
+                                          context, Routes.report);
+                                    })),
                           ],
                         ),
 
