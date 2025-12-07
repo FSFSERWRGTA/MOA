@@ -12,3 +12,4 @@ class AppSession {
   /// 로그인 성공 시 여기에 사용자 ID가 저장됩니다.
   String? loggedInUserId;
 }
+
