@@ -15,7 +15,7 @@ class ReportScreen extends StatelessWidget {
     'OTT': Color.fromARGB(255, 243, 67, 67), // 빨강
     '음악': Color(0xFF448AFF), // 파랑
     '생산성': Color(0xFF69F0AE), // 초록
-    'AI 툴': Color(0xFFE040FB), // 보라
+    'AI 툴': Color.fromARGB(255, 255, 163, 57), // 보라
     '클라우드': Color(0xFF607D8B), // 회색
   };
 

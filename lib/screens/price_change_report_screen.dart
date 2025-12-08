@@ -1,58 +1,148 @@
-/*
- * 크롤러가 감지한 가격 변동 내역(priceChanges 컬렉션)을 리스트로 보여주는 화면
- */
+// ---------------------------------------------------------------------------
+// 가격 변동 리포트 화면
+// 주요 기능:
+//   - 사용자가 구독 중인 서비스만 가격 변동 체크
+//   - serviceScrapes 컬렉션에서 최신 2개의 데이터를 비교 **따라서 당일 데이터가 있어야 함.
+//   - 변동이 있는 플랜만 리스트업하여 UI로 표시
+// ---------------------------------------------------------------------------
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../user_state.dart';
 
-class PriceChangeReportScreen extends StatelessWidget {
+class PriceChangeReportScreen extends StatefulWidget {
   const PriceChangeReportScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const appBg = Colors.white;
+  State<PriceChangeReportScreen> createState() =>
+      _PriceChangeReportScreenState();
+}
 
+class _PriceChangeReportScreenState extends State<PriceChangeReportScreen> {
+  // Firestore에서 사용자의 구독 목록을 불러오는 함수
+  Future<List<String>> _loadUserSubscriptions() async {
+    final uid = UserState.currentUserId;
+    if (uid == null) return [];
+
+    final snap = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(uid)
+        .collection("subscriptions")
+        .get();
+
+    // 구독 문서에서 providerName 또는 serviceId 로 판단
+    return snap.docs
+        .map((d) => (d.data()["providerName"] as String?)?.toLowerCase() ?? "")
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  // 가격 변동 분석 전체 흐름
+  Future<List<PriceChangeModel>> _loadChanges() async {
+    final subscribedServices = await _loadUserSubscriptions();
+
+    if (subscribedServices.isEmpty) return [];
+
+    // serviceScrapes 전체 불러오기
+    final snap =
+        await FirebaseFirestore.instance.collection("serviceScrapes").get();
+
+    // 구독 중인 서비스만 필터링
+    final filtered = snap.docs.where((doc) {
+      final parts = doc.id.split("_");
+      if (parts.length < 3) return false;
+      final serviceName =
+          parts[1].toLowerCase(); // evt_claude_20251207 -> claude
+      return subscribedServices.contains(serviceName);
+    }).toList();
+
+    // 서비스별로 문서 그룹화 (claude, tving 등)
+    Map<String, List<QueryDocumentSnapshot>> grouped = {};
+    for (var doc in filtered) {
+      final serviceKey = doc.id.split("_")[1].toLowerCase();
+      grouped.putIfAbsent(serviceKey, () => []);
+      grouped[serviceKey]!.add(doc);
+    }
+
+    // 최신 기준으로 정렬 + 최근 2개만 남기기
+    for (var key in grouped.keys) {
+      grouped[key]!.sort((a, b) => b.id.compareTo(a.id));
+      if (grouped[key]!.length > 2) {
+        grouped[key] = grouped[key]!.sublist(0, 2);
+      }
+    }
+
+    List<PriceChangeModel> changes = [];
+
+    // 실제 가격 비교 로직 수행
+    for (var key in grouped.keys) {
+      final docs = grouped[key]!;
+      if (docs.length < 2) continue;
+
+      final latest = docs[0].data() as Map<String, dynamic>;
+      final previous = docs[1].data() as Map<String, dynamic>;
+
+      final latestPlans = (latest["plans"] ?? []) as List;
+      final previousPlans = (previous["plans"] ?? []) as List;
+
+      // 이전 플랜을 planId 기준으로 빠르게 찾을 수 있게 map으로 변경
+      final prevMap = {for (var p in previousPlans) p["planId"]: p};
+
+      for (var plan in latestPlans) {
+        final planId = plan["planId"];
+        if (!prevMap.containsKey(planId)) continue;
+
+        final oldPrice = (prevMap[planId]["amount"] as num?)?.toInt() ?? 0;
+        final newPrice = (plan["amount"] as num?)?.toInt() ?? 0;
+
+        if (oldPrice != newPrice) {
+          changes.add(
+            PriceChangeModel(
+              serviceName: key,
+              planName: plan["planName"] ?? "",
+              oldPrice: oldPrice,
+              newPrice: newPrice,
+              effectiveDate: DateTime.now(),
+            ),
+          );
+        }
+      }
+    }
+
+    return changes;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: appBg,
       appBar: AppBar(
-        backgroundColor: appBg,
+        title: const Text("가격 변동 리포트",
+            style:
+                TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          "가격 변동 리포트",
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800),
-        ),
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        // 1. priceChanges 컬렉션을 감지일(detectedAt) 최신순으로 정렬하여 가져옴
-        stream: FirebaseFirestore.instance
-            .collection('priceChanges')
-            .orderBy('detectedAt', descending: true)
-            .snapshots(),
+      backgroundColor: Colors.white,
+      body: FutureBuilder(
+        future: _loadChanges(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError) {
-            return Center(child: Text("데이터를 불러오는데 실패했습니다: ${snapshot.error}"));
-          }
 
-          final docs = snapshot.data?.docs ?? [];
+          final items = snapshot.data!;
 
-          if (docs.isEmpty) {
+          if (items.isEmpty) {
             return _buildEmptyState();
           }
 
           return ListView.separated(
             padding: const EdgeInsets.all(20),
-            itemCount: docs.length,
-            separatorBuilder: (c, i) => const SizedBox(height: 16),
-            itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
-              return _PriceChangeCard(data: data);
-            },
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 14),
+            itemBuilder: (_, i) => _PriceChangeCard(item: items[i]),
           );
         },
       ),
@@ -63,200 +153,91 @@ class PriceChangeReportScreen extends StatelessWidget {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle_outline, size: 64, color: Colors.green[300]),
-          const SizedBox(height: 16),
-          const Text(
-            "감지된 가격 변동이 없습니다.",
-            style: TextStyle(fontSize: 16, color: Colors.black54),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "모든 구독 서비스가 안정적입니다.",
-            style: TextStyle(fontSize: 14, color: Colors.black45),
-          ),
+        children: const [
+          Icon(Icons.check_circle_outline, size: 60, color: Colors.green),
+          SizedBox(height: 12),
+          Text("가격 변동이 없습니다.", style: TextStyle(fontSize: 16)),
+          SizedBox(height: 6),
+          Text("구독 중인 서비스는 모두 그대로에요.",
+              style: TextStyle(fontSize: 13, color: Colors.black54)),
         ],
       ),
     );
   }
 }
 
+/// ---------------------------------------------------------------------------
+/// 가격 변동 UI 카드
+/// ---------------------------------------------------------------------------
 class _PriceChangeCard extends StatelessWidget {
-  const _PriceChangeCard({required this.data});
-  final Map<String, dynamic> data;
+  const _PriceChangeCard({required this.item});
+  final PriceChangeModel item;
 
   @override
   Widget build(BuildContext context) {
-    // 데이터 파싱
-    final String serviceName = data['serviceName'] ?? '서비스명 미상';
-    final String planName = data['planName'] ?? '기본 플랜';
-    final int oldPrice = (data['oldPrice'] as num?)?.toInt() ?? 0;
-    final int newPrice = (data['newPrice'] as num?)?.toInt() ?? 0;
-    final String type =
-        data['changeType'] ?? 'increase'; // increase or decrease
-
-    // 날짜 파싱
-    DateTime? effectiveDate;
-    if (data['effectiveDate'] != null) {
-      effectiveDate = (data['effectiveDate'] as Timestamp).toDate();
-    }
-
-    // 변동률 계산
-    double diffRate = 0;
-    if (oldPrice > 0) {
-      diffRate = ((newPrice - oldPrice) / oldPrice) * 100;
-    }
-
-    // UI 테마 설정 (인상: 빨강 / 인하: 파랑)
-    final bool isIncrease = type == 'increase';
-    final Color cardColor =
-        isIncrease ? const Color(0xFFFFF5F5) : const Color(0xFFF0F9FF);
-    final Color accentColor =
-        isIncrease ? const Color(0xFFFF5252) : const Color(0xFF448AFF);
-    final IconData icon = isIncrease ? Icons.trending_up : Icons.trending_down;
-    final String sign = isIncrease ? "+" : "";
+    final bool isIncrease = item.newPrice > item.oldPrice;
+    final Color color = isIncrease ? Colors.red : Colors.blue;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: color.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentColor.withOpacity(0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. 헤더 (서비스명 + 배지)
+          Text(item.serviceName,
+              style:
+                  const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          Text(item.planName,
+              style: const TextStyle(fontSize: 13, color: Colors.black54)),
+          const SizedBox(height: 12),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.subscriptions, color: accentColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      serviceName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 16),
-                    ),
-                    Text(
-                      planName,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ),
-              // 변동률 배지
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: accentColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(icon, color: Colors.white, size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      "$sign${diffRate.toStringAsFixed(1)}%",
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12),
-                    ),
-                  ],
-                ),
+              Text("기존 ${item.oldPrice}원",
+                  style: const TextStyle(fontSize: 13)),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                "${item.newPrice}원",
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold, color: color),
               ),
             ],
           ),
-
-          const SizedBox(height: 16),
-          const Divider(height: 1, thickness: 1, color: Colors.black12),
-          const SizedBox(height: 16),
-
-          // 2. 가격 비교 정보
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("기존 가격",
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                  const SizedBox(height: 2),
-                  Text(
-                    "${NumberFormat("#,###").format(oldPrice)}원",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                      decoration: TextDecoration.lineThrough, // 취소선
-                    ),
-                  ),
-                ],
-              ),
-              const Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text("변경 가격",
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                  const SizedBox(height: 2),
-                  Text(
-                    "${NumberFormat("#,###").format(newPrice)}원",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: accentColor,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // 3. 반영일 정보
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 6),
-                Text(
-                  effectiveDate != null
-                      ? "반영 예정일: ${DateFormat('yyyy년 MM월 dd일').format(effectiveDate)}"
-                      : "반영일 미정",
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[800],
-                      fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 8),
+          Text(
+            "변동률: ${item.diffRate.toStringAsFixed(1)}%",
+            style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.bold, color: color),
+          )
         ],
       ),
     );
   }
+}
+
+/// ---------------------------------------------------------------------------
+/// 모델 객체: 가격 변동 정보를 저장
+/// ---------------------------------------------------------------------------
+class PriceChangeModel {
+  final String serviceName;
+  final String planName;
+  final int oldPrice;
+  final int newPrice;
+  final DateTime effectiveDate;
+
+  PriceChangeModel({
+    required this.serviceName,
+    required this.planName,
+    required this.oldPrice,
+    required this.newPrice,
+    required this.effectiveDate,
+  });
+
+  double get diffRate =>
+      oldPrice == 0 ? 0 : ((newPrice - oldPrice) / oldPrice) * 100;
 }
