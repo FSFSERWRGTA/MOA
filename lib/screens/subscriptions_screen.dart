@@ -40,7 +40,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
 
       for (var doc in subDocs.docs) {
         final data = doc.data();
-        final bool isActive = (data['status'] as String? ?? 'inactive') == 'active';
+        final bool isActive =
+            (data['status'] as String? ?? 'inactive') == 'active';
         if (!isActive) continue; // 비활성 구독은 건너뛰기
 
         final amount = (data['amount'] as num?)?.toInt() ?? 0;
@@ -51,7 +52,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
           var potentialNextDate = nextRenewalAt;
           if (potentialNextDate.isBefore(today)) {
             // 이미 지난 날짜면 내년으로
-            potentialNextDate = DateTime(now.year + 1, potentialNextDate.month, potentialNextDate.day);
+            potentialNextDate = DateTime(
+                now.year + 1, potentialNextDate.month, potentialNextDate.day);
           }
           if (nextDate == null || potentialNextDate.isBefore(nextDate)) {
             nextDate = potentialNextDate;
@@ -90,6 +92,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     if (diff > 0) return 'D-$diff';
     return 'D+${diff.abs()}';
   }
+
   int _monthOf(String mmdd) {
     final sp = mmdd.split('/');
     if (sp.isEmpty) return DateTime.now().month;
@@ -106,12 +109,26 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         centerTitle: true,
-        title: const Text('MOA', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800, letterSpacing: 0.3)),
+        title: const Text('MOA',
+            style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3)),
         actions: [
-          IconButton(tooltip: '결제 달력', icon: const Icon(Icons.calendar_today_outlined, color: Colors.black87), onPressed: () {}),
-          IconButton(tooltip: '홈으로', icon: const Icon(Icons.home_outlined, color: Colors.black87), onPressed: () => Navigator.pushReplacementNamed(context, Routes.home)),
+          IconButton(
+              tooltip: '결제 달력',
+              icon: const Icon(Icons.calendar_today_outlined,
+                  color: Colors.black87),
+              onPressed: () {}),
+          IconButton(
+              tooltip: '홈으로',
+              icon: const Icon(Icons.home_outlined, color: Colors.black87),
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, Routes.home)),
         ],
-        bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider(height: 1, thickness: 1, color: divider)),
+        bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: divider)),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _fetchSubsData(),
@@ -120,7 +137,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError || snapshot.data?['error'] != null) {
-            return Center(child: Text("데이터를 불러올 수 없습니다.\n${snapshot.error ?? snapshot.data?['error']}"));
+            return Center(
+                child: Text(
+                    "데이터를 불러올 수 없습니다.\n${snapshot.error ?? snapshot.data?['error']}"));
           }
 
           final data = snapshot.data!;
@@ -156,13 +175,16 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: '홈'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: '내 구독'),
+          NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined), label: '내 구독'),
           NavigationDestination(icon: Icon(Icons.star_border), label: '추천'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: '프로필'),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.pushNamed(context, Routes.addSubscription);
+        },
         backgroundColor: const Color(0xFFEDEBFF),
         icon: const Icon(Icons.add, color: Color(0xFF6F6BFF)),
         label: const Text('구독 추가', style: TextStyle(color: Color(0xFF6F6BFF))),
@@ -215,9 +237,13 @@ class _SubsListBodyState extends State<_SubsListBody> {
     }).toList()
       ..sort((a, b) {
         switch (_sort ?? _kDefaultSort) {
-          case '가격 높은순': return _parseWon(b.price).compareTo(_parseWon(a.price));
-          case '이름': return a.name.compareTo(b.name);
-          case '결제일 빠른순': default: return a.nextDate.compareTo(b.nextDate);
+          case '가격 높은순':
+            return _parseWon(b.price).compareTo(_parseWon(a.price));
+          case '이름':
+            return a.name.compareTo(b.name);
+          case '결제일 빠른순':
+          default:
+            return a.nextDate.compareTo(b.nextDate);
         }
       });
 
@@ -234,12 +260,15 @@ class _SubsListBodyState extends State<_SubsListBody> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       children: [
-        const Text('내 구독', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        const Text('내 구독',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
         _SummaryPanel(
           monthSpendingText: widget.formatWon(widget.totalSpending),
           activeCountText: '${widget.allItems.where((e) => e.active).length}개',
-          nextBillingLabel: widget.nextBillingDate != null ? widget.formatDate(widget.nextBillingDate!) : '없음',
+          nextBillingLabel: widget.nextBillingDate != null
+              ? widget.formatDate(widget.nextBillingDate!)
+              : '없음',
           nextBillingDday: widget.dDay,
           onTapNextBilling: () {},
         ),
@@ -249,74 +278,118 @@ class _SubsListBodyState extends State<_SubsListBody> {
           decoration: InputDecoration(
             hintText: '구독명 검색',
             prefixIcon: const Icon(Icons.search),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            _FilterChip(label: '전체', selected: _filter == '전체', onTap: () => setState(() => _filter = '전체')),
+            _FilterChip(
+                label: '전체',
+                selected: _filter == '전체',
+                onTap: () => setState(() => _filter = '전체')),
             const SizedBox(width: 8),
-            _FilterChip(label: '활성', selected: _filter == '활성', onTap: () => setState(() => _filter = '활성')),
+            _FilterChip(
+                label: '활성',
+                selected: _filter == '활성',
+                onTap: () => setState(() => _filter = '활성')),
             const SizedBox(width: 8),
-            _FilterChip(label: '일시중지', selected: _filter == '일시중지', onTap: () => setState(() => _filter = '일시중지')),
+            _FilterChip(
+                label: '일시중지',
+                selected: _filter == '일시중지',
+                onTap: () => setState(() => _filter = '일시중지')),
             const Spacer(),
             PopupMenuButton<String>(
               tooltip: '정렬',
               onSelected: (v) => setState(() => _sort = v),
-              itemBuilder: (ctx) => const [PopupMenuItem(value: '결제일 빠른순', child: Text('결제일 빠른순')), PopupMenuItem(value: '가격 높은순', child: Text('가격 높은순')), PopupMenuItem(value: '이름', child: Text('이름'))],
-              child: Row(children: [Text(_sort ?? _kDefaultSort, style: const TextStyle(color: Colors.black87)), const SizedBox(width: 4), const Icon(Icons.arrow_drop_down)]),
+              itemBuilder: (ctx) => const [
+                PopupMenuItem(value: '결제일 빠른순', child: Text('결제일 빠른순')),
+                PopupMenuItem(value: '가격 높은순', child: Text('가격 높은순')),
+                PopupMenuItem(value: '이름', child: Text('이름'))
+              ],
+              child: Row(children: [
+                Text(_sort ?? _kDefaultSort,
+                    style: const TextStyle(color: Colors.black87)),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down)
+              ]),
             ),
           ],
         ),
         const SizedBox(height: 18),
         if (categoryTotals.isNotEmpty) ...[
-          const Text('카테고리별 지출 (이번 달 · 활성)', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('카테고리별 지출 (이번 달 · 활성)',
+              style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
           _CategoryBars(data: categoryTotals),
           const SizedBox(height: 18),
         ],
-        ...visible.map((e) => _SubCard(item: e, accent: const Color(0xFF6F6BFF))),
-        if (visible.isEmpty) Container(
-          margin: const EdgeInsets.only(top: 24),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: const Color(0xFFF7F7FF), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE8E8FF))),
-          child: const Row(children: [Icon(Icons.inbox_outlined), SizedBox(width: 8), Expanded(child: Text('조건에 맞는 구독이 없어요. 필터나 검색어를 조정해보세요.'))]),
-        ),
+        ...visible
+            .map((e) => _SubCard(item: e, accent: const Color(0xFF6F6BFF))),
+        if (visible.isEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 24),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+                color: const Color(0xFFF7F7FF),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE8E8FF))),
+            child: const Row(children: [
+              Icon(Icons.inbox_outlined),
+              SizedBox(width: 8),
+              Expanded(child: Text('조건에 맞는 구독이 없어요. 필터나 검색어를 조정해보세요.'))
+            ]),
+          ),
       ],
     );
   }
-  int _parseWon(String s) => int.tryParse(s.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
+  int _parseWon(String s) =>
+      int.tryParse(s.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 }
-
-
-
 
 /* ================= 위젯들 ================= */
 
 class _SubItem {
   final String name, price, nextDate, note, category;
   final bool active;
-  _SubItem(this.name, this.price, this.nextDate, this.note, this.active, this.category);
+  _SubItem(this.name, this.price, this.nextDate, this.note, this.active,
+      this.category);
 }
 
 class _SummaryPanel extends StatelessWidget {
-  const _SummaryPanel({required this.monthSpendingText, required this.activeCountText, required this.nextBillingLabel, required this.nextBillingDday, this.onTapNextBilling});
-  final String monthSpendingText, activeCountText, nextBillingLabel, nextBillingDday;
+  const _SummaryPanel(
+      {required this.monthSpendingText,
+      required this.activeCountText,
+      required this.nextBillingLabel,
+      required this.nextBillingDday,
+      this.onTapNextBilling});
+  final String monthSpendingText,
+      activeCountText,
+      nextBillingLabel,
+      nextBillingDday;
   final VoidCallback? onTapNextBilling;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(color: const Color(0xFFF7F7FF), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE8E8FF))),
+      decoration: BoxDecoration(
+          color: const Color(0xFFF7F7FF),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE8E8FF))),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildCol('월 예상 지출', monthSpendingText),
           _buildCol('활성 구독', activeCountText),
-          InkWell(onTap: onTapNextBilling, borderRadius: BorderRadius.circular(8), child: _buildCol('다음 결제일', nextBillingLabel, sub: nextBillingDday)),
+          InkWell(
+              onTap: onTapNextBilling,
+              borderRadius: BorderRadius.circular(8),
+              child:
+                  _buildCol('다음 결제일', nextBillingLabel, sub: nextBillingDday)),
         ],
       ),
     );
@@ -324,16 +397,27 @@ class _SummaryPanel extends StatelessWidget {
 
   Widget _buildCol(String label, String value, {String? sub}) {
     return Column(children: [
-      Text(label, style: const TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w600)),
+      Text(label,
+          style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 13,
+              fontWeight: FontWeight.w600)),
       const SizedBox(height: 4),
-      Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-      if (sub != null) Text(sub, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6F6BFF))),
+      Text(value,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+      if (sub != null)
+        Text(sub,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6F6BFF))),
     ]);
   }
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  const _FilterChip(
+      {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -341,8 +425,18 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color bg = selected ? const Color(0xFFEDEBFF) : Colors.white;
-    final Color border = selected ? const Color(0xFF6F6BFF) : const Color(0xFFE8E8FF);
-    return ChoiceChip(label: Text(label), selected: selected, onSelected: (_) => onTap(), selectedColor: bg, backgroundColor: bg, labelStyle: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87), side: BorderSide(color: border), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)));
+    final Color border =
+        selected ? const Color(0xFF6F6BFF) : const Color(0xFFE8E8FF);
+    return ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => onTap(),
+        selectedColor: bg,
+        backgroundColor: bg,
+        labelStyle:
+            const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+        side: BorderSide(color: border),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)));
   }
 }
 
@@ -353,22 +447,44 @@ class _CategoryBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = data.values.fold<int>(0, (s, v) => s + v);
-    final entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    return Column(children: entries.map((e) {
+    final entries = data.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return Column(
+        children: entries.map((e) {
       final ratio = total == 0 ? 0.0 : e.value / total;
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Column(children: [
-          Row(children: [Expanded(child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600))), Text('₩${_formatComma(e.value)}', style: const TextStyle(color: Colors.black54))]),
+          Row(children: [
+            Expanded(
+                child: Text(e.key,
+                    style: const TextStyle(fontWeight: FontWeight.w600))),
+            Text('₩${_formatComma(e.value)}',
+                style: const TextStyle(color: Colors.black54))
+          ]),
           const SizedBox(height: 6),
-          LayoutBuilder(builder: (context, c) => Stack(children: [
-            Container(height: 10, width: c.maxWidth, decoration: BoxDecoration(color: const Color(0xFFF1F0FF), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0xFFE8E8FF)))),
-            Container(height: 10, width: c.maxWidth * ratio, decoration: BoxDecoration(color: const Color(0xFF6F6BFF).withOpacity(.9), borderRadius: BorderRadius.circular(999))),
-          ])),
+          LayoutBuilder(
+              builder: (context, c) => Stack(children: [
+                    Container(
+                        height: 10,
+                        width: c.maxWidth,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFF1F0FF),
+                            borderRadius: BorderRadius.circular(999),
+                            border:
+                                Border.all(color: const Color(0xFFE8E8FF)))),
+                    Container(
+                        height: 10,
+                        width: c.maxWidth * ratio,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFF6F6BFF).withOpacity(.9),
+                            borderRadius: BorderRadius.circular(999))),
+                  ])),
         ]),
       );
     }).toList());
   }
+
   static String _formatComma(int v) {
     final s = v.toString();
     final b = StringBuffer();
@@ -391,12 +507,40 @@ class _SubCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE8E8FF)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(.03), blurRadius: 12, offset: const Offset(0, 6))]),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE8E8FF)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(.03),
+                blurRadius: 12,
+                offset: const Offset(0, 6))
+          ]),
       child: Row(children: [
-        Container(width: 44, height: 44, decoration: BoxDecoration(color: const Color(0xFFEDEBFF), borderRadius: BorderRadius.circular(12)), child: Icon(Icons.subscriptions_outlined, color: accent)),
+        Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+                color: const Color(0xFFEDEBFF),
+                borderRadius: BorderRadius.circular(12)),
+            child: Icon(Icons.subscriptions_outlined, color: accent)),
         const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text(item.note, style: const TextStyle(color: Colors.black54, fontSize: 13))])),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(item.price, style: const TextStyle(fontWeight: FontWeight.w700)), const SizedBox(height: 4), Text('다음 결제: ${item.nextDate}')]),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(item.name,
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(item.note,
+              style: const TextStyle(color: Colors.black54, fontSize: 13))
+        ])),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(item.price, style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text('다음 결제: ${item.nextDate}')
+        ]),
       ]),
     );
   }
