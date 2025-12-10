@@ -21,13 +21,13 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   List<_RecommendedPlan> _cheaperPlans = [];
   List<_RecommendedPlan> _alternativeServices = [];
 
-  // ✅ 실제 데이터로 업데이트될 변수들
   int thisMonthSpending = 0;
-  int savingIfSwitched = 0; // ✅ API 응답으로 업데이트됨
+  int savingIfSwitched = 0;
 
   String _selectedMode = '현재 구독을 더 저렴하게';
   String _selectedCategory = 'ott';
   String _userName = '';
+  Set<String> _subscribedCategories = {};
 
   @override
   void initState() {
@@ -36,7 +36,6 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   }
 
   Future<void> _fetchRecommendations() async {
-    // ✨ 1. API 호출 전, 화면을 로딩 상태로 만들고 이전 데이터를 초기화합니다.
     setState(() {
       _isLoading = true;
       _error = null;
@@ -45,40 +44,55 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     });
 
     try {
-      // ✨ 2. 사용자 정보와 총 지출액을 가져옵니다.
       final userData = await UserService.getUserSubscriptions();
+      final userSubsList = userData['subscriptions'] as List<UserSubscription>;
+
+      final newSubscribedCategories = userSubsList.map((sub) {
+        String category = sub.serviceType.toLowerCase();
+        if (category == 'ai 툴') return 'ai';
+        return category;
+      }).toSet();
+
       if (mounted) {
         setState(() {
-          // '이번 달 예상 지출' UI를 실제 데이터로 업데이트합니다.
           _userName = userData['userName'] ?? '사용자';
           thisMonthSpending = userData['totalSpending'];
+          _subscribedCategories = newSubscribedCategories;
         });
       }
 
-      // ✨ 3. 사용자가 선택한 모드에 따라 API를 호출합니다.
       if (_selectedMode == '새로운 구독 찾기') {
         final result = await GeminiService.getNewSubscriptionSuggestions(
           selectedCategory: _selectedCategory,
         );
-
-        // 파싱
         final newAlternativeServices = (result['suggestions'] as List? ?? [])
             .map((p) => _RecommendedPlan.fromJson(p as Map<String, dynamic>))
             .toList();
 
-        // UI 업데이트
         if (mounted) {
           setState(() {
             _alternativeServices = newAlternativeServices;
-            savingIfSwitched = 0; // 새로운 구독 찾기 모드에서는 절감액 0
+            savingIfSwitched = 0;
             _listKey = UniqueKey();
           });
         }
       } else {
-        // "현재 구독을 더 저렴하게" 모드
-        final userSubsList = userData['subscriptions'] as List<UserSubscription>;
+        if (!newSubscribedCategories.contains(_selectedCategory)) {
+          print("코드 레벨에서 차단: 사용자가 구독하지 않는 카테고리($_selectedCategory)입니다.");
+          if (mounted) {
+            setState(() {
+              _cheaperPlans = [];
+              _alternativeServices = [];
+              savingIfSwitched = 0;
+              _listKey = UniqueKey();
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+
         final userSubscriptionsText = userSubsList
-            .map((sub) => " - ${sub.serviceId}: 월 ${sub.price}원")
+            .map((sub) => " - ${sub.serviceId}: 월 ${sub.price}원 (카테고리: ${sub.serviceType})")
             .join('\n');
 
         final result = await GeminiService.getRecommendations(
@@ -88,7 +102,6 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           currentTotalSpending: thisMonthSpending,
         );
 
-        // 파싱 (bundleOptions 제거됨)
         final newCheaperPlans = (result['cheaperPlans'] as List? ?? [])
             .map((p) => _RecommendedPlan.fromJson(p as Map<String, dynamic>))
             .toList();
@@ -97,7 +110,6 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             .toList();
         final estimatedSavings = result['estimatedMonthlySavings'] ?? 0;
 
-        // UI 업데이트 (bundleOptions 제거됨)
         if (mounted) {
           setState(() {
             _cheaperPlans = newCheaperPlans;
@@ -109,19 +121,20 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           });
         }
       }
-    } catch (e) {
+    } catch (e, s) {
       if (mounted) {
         setState(() {
           _error = "추천 정보를 가져오는 데 실패했습니다.\n네트워크 상태를 확인하거나 잠시 후 다시 시도해주세요.";
-          print("RecommendationsScreen Error: $e");
+          print("RecommendationsScreen Error: $e\n$s");
         });
       }
     } finally {
-      // ✨ 4. 모든 작업(성공 또는 실패)이 끝나면 로딩 상태를 해제합니다.
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        if (_isLoading) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -152,77 +165,73 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         child: ListView(
           key: _listKey,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),children: [
-          // ✨ 3. 변수를 사용하여 동적으로 이름을 표시
           Text('$_userName님을 위한 구독 추천', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
-            const Text('현재 구독 상황과 원하는 방향을 선택하면\n대체 플랜과 새로운 서비스를 비교해드려요.', style: TextStyle(color: Colors.black54, fontSize: 13, height: 1.4)),
-            const SizedBox(height: 18),
+          const Text('현재 구독 상황과 원하는 방향을 선택하면\n대체 플랜과 새로운 서비스를 비교해드려요.', style: TextStyle(color: Colors.black54, fontSize: 13, height: 1.4)),
+          const SizedBox(height: 18),
 
-            _PreferenceCard(
-              selectedMode: _selectedMode,
-              onModeChanged: (value) {
-                setState(() => _selectedMode = value);
-                _fetchRecommendations();
-              },
-              selectedCategory: _selectedCategory,
-              onCategoryChanged: (value) {
-                setState(() => _selectedCategory = value);
-                _fetchRecommendations();
-              },
-            ),
-            const SizedBox(height: 16),
+          _PreferenceCard(
+            selectedMode: _selectedMode,
+            onModeChanged: (value) {
+              setState(() => _selectedMode = value);
+              _fetchRecommendations();
+            },
+            selectedCategory: _selectedCategory,
+            onCategoryChanged: (value) {
+              setState(() => _selectedCategory = value);
+              _fetchRecommendations();
+            },
+            subscribedCategories: _subscribedCategories,
+          ),
+          const SizedBox(height: 16),
 
-            // ✨ '현재 구독을 더 저렴하게' 모드일 때만 절감액 위젯을 표시
-            if (_selectedMode == '현재 구독을 더 저렴하게')
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24.0), // 아래쪽 여백을 줌
-                child: _SavingsSummaryRow(
-                  thisMonthSpending: thisMonthSpending,
-                  savingIfSwitched: savingIfSwitched,
-                ),
+          if (_selectedMode == '현재 구독을 더 저렴하게')
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24.0), // 아래쪽 여백을 줌
+              child: _SavingsSummaryRow(
+                thisMonthSpending: thisMonthSpending,
+                savingIfSwitched: savingIfSwitched,
               ),
+            ),
 
-            if (_isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: CircularProgressIndicator(color: purple),
-                ),
-              )
-            else if (_error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Center(child: Text(_error!, textAlign: TextAlign.center)),
-              )
-            else if (showEmptyMessage)                const Padding(
+          if (_isLoading)
+            const Center(
+              child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
-                child: Center(child: Text("이 조건에 맞는 추천 항목이 없습니다.")),
-              )
-              else ...[
+                child: CircularProgressIndicator(color: purple),
+              ),
+            )
+          else if (_error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: Text(_error!, textAlign: TextAlign.center)),
+            )
+          else if (showEmptyMessage)                const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: Text("이 조건에 맞는 추천 항목이 없습니다.")),
+            )
+            else ...[
 
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 24.0),
-                    child: _RecommendationGroup(
-                      title: '같은 서비스의 더 저렴한 플랜',
-                      subtitle: '지금 사용하는 서비스 안에서 요금제만 가볍게 조정해요.',
-                      plans: _cheaperPlans,
-                    ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 24.0),
+                  child: _RecommendationGroup(
+                    title: '같은 서비스의 더 저렴한 플랜',
+                    subtitle: '지금 사용하는 서비스 안에서 요금제만 가볍게 조정해요.',
+                    plans: _cheaperPlans,
                   ),
-                  _RecommendationGroup(
-                    // ✨ 1. _selectedMode에 따라 다른 제목을 보여줍니다.
-                    title: _selectedMode == '새로운 구독 찾기'
-                        ? '이런 구독 서비스는 어때요?' // "새로운 구독 찾기" 모드일 때의 제목
-                        : '동일 카테고리의 대체 서비스', // "더 저렴하게" 모드일 때의 제목
+                ),
+                _RecommendationGroup(
+                  title: _selectedMode == '새로운 구독 찾기'
+                      ? '이런 구독 서비스는 어때요?'
+                      : '동일 카테고리의 대체 서비스',
 
-                    // ✨ 2. _selectedMode에 따라 다른 부제목을 보여줍니다.
-                    subtitle: _selectedMode == '새로운 구독 찾기'
-                        ? '관심 카테고리의 인기 서비스를 모아봤어요.' // "새로운 구독 찾기" 모드일 때의 부제목
-                        : '콘텐츠 성격은 비슷하게, 가격·혜택은 더 나은 조합으로.', // "더 저렴하게" 모드일 때의 부제목
-                    plans: _alternativeServices,
-                  ),
-                ],
-// ... 다른 코드들 .
-          ],
+                  subtitle: _selectedMode == '새로운 구독 찾기'
+                      ? '관심 카테고리의 인기 서비스를 모아봤어요.'
+                      : '콘텐츠 성격은 비슷하게, 가격·혜택은 더 나은 조합으로.',
+                  plans: _alternativeServices,
+                ),
+              ],
+        ],
         ),
       ),
       bottomNavigationBar: NavigationBar(
@@ -252,12 +261,14 @@ class _PreferenceCard extends StatelessWidget {
     required this.onModeChanged,
     required this.selectedCategory,
     required this.onCategoryChanged,
+    required this.subscribedCategories,
   });
 
   final String selectedMode;
   final ValueChanged<String> onModeChanged;
   final String selectedCategory;
   final ValueChanged<String> onCategoryChanged;
+  final Set<String> subscribedCategories;
 
   static const _modes = ['현재 구독을 더 저렴하게', '새로운 구독 찾기'];
   static const _categories = ['ott', 'ai', 'music', 'cloud', 'productivity'];
@@ -307,14 +318,20 @@ class _PreferenceCard extends StatelessWidget {
             runSpacing: 8,
             children: _categories.map((c) {
               final selected = c == selectedCategory;
-              return ChoiceChip(
-                label: Text(c, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? const Color(0xFF6F6BFF) : Colors.black87)),
-                selected: selected,
-                selectedColor: const Color(0xFFEDEBFF),
-                backgroundColor: const Color(0xFFF7F7FF),
-                side: BorderSide(color: selected ? const Color(0xFF6F6BFF) : _RecommendationsScreenState.divider),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-                onSelected: (_) => onCategoryChanged(c),
+              final bool isAlreadySubscribed =
+                  selectedMode == '새로운 구독 찾기' && subscribedCategories.contains(c);
+
+              return Opacity(
+                opacity: isAlreadySubscribed ? 0.5 : 1.0,
+                child: ChoiceChip(
+                  label: Text(c, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? const Color(0xFF6F6BFF) : Colors.black87)),
+                  selected: selected,
+                  selectedColor: const Color(0xFFEDEBFF),
+                  backgroundColor: const Color(0xFFF7F7FF),
+                  side: BorderSide(color: selected ? const Color(0xFF6F6BFF) : _RecommendationsScreenState.divider),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                  onSelected: (_) => onCategoryChanged(c),
+                ),
               );
             }).toList(),
           ),
@@ -444,18 +461,14 @@ class _RecommendedPlan {
     final featuresData = json['features'];
 
     if (featuresData is List) {
-      // 1. 정상적으로 리스트가 올 경우
       featuresList = featuresData.map((e) => e.toString()).toList();
     } else if (featuresData is String) {
-      // 2. 통 문자열로 올 경우 (예: "핵심 기능 1, 핵심 기능 2")
-      // 쉼표나 줄바꿈으로 분리하여 리스트로 변환
       featuresList = featuresData
-          .split(RegExp(r'[,|•\n]')) // 쉼표, •, 줄바꿈 기준으로 분리
-          .map((e) => e.trim()) // 각 항목의 양쪽 공백 제거
-          .where((e) => e.isNotEmpty) // 빈 항목은 리스트에 추가하지 않음
+          .split(RegExp(r'[,|•\n]'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
           .toList();
     }
-    // 3. 그 외 타입(null 등)이 오면 빈 리스트로 유지됩니다.
 
     return _RecommendedPlan(
       logoLetter: json['logoLetter']?.toString() ?? '?',
@@ -464,7 +477,7 @@ class _RecommendedPlan {
       savingLabel: json['savingLabel']?.toString() ?? '',
       savingPercent: json['savingPercent']?.toString() ?? '',
       summary: json['summary']?.toString() ?? '요약 정보가 없습니다.',
-      features: featuresList, // ✅ 안전하게 변환된 리스트 사용
+      features: featuresList,
       why: json['why']?.toString() ?? '추천 이유가 없습니다.',
     );
   }
@@ -511,9 +524,6 @@ class _RecommendationCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // ✨✨✨ 결정적인 수정 ✨✨✨
-          // 만약 plan.isDollar가 true이면(달러 기반이면), 이 부분을 아예 그리지 않습니다.
-          // 또한 savingLabel에 내용이 있을 때만 이 부분을 그립니다.
           if (!plan.isDollar && plan.savingLabel != null && plan.savingLabel!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 6.0),
