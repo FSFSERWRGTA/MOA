@@ -11,6 +11,7 @@ import '../screens/add_subscription/add_subscription_manual.dart';
 import '../screens/add_subscription/add_subscription_confirm.dart';
 import '../screens/price_change_report_screen.dart';
 import '../screens/report_screen.dart';
+import '../model/ocr_result.dart';
 
 class Routes {
   static const login = '/login';
@@ -50,22 +51,26 @@ class AppRouter {
 
       case Routes.addSubscription:
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => const AddSubscriptionStartScreen(),
         );
 
       case Routes.addSubscriptionOCR:
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => const AddSubscriptionOCRScreen(),
         );
 
       case Routes.addSubscriptionManual:
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => const AddSubscriptionManualScreen(),
         );
 
       case Routes.addSubscriptionConfirm:
         final args = settings.arguments as OCRResult;
         return MaterialPageRoute(
+          settings: settings,
           builder: (_) => AddSubscriptionConfirmScreen(result: args),
         );
 

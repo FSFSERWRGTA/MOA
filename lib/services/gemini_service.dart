@@ -5,18 +5,25 @@ import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSyBVEKVP6fwVZmsQS1zLC6sYf1Jgc_h0QaY'; // ⭐️ 여기에 실제 API 키 입력
-  static const String _apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+  static const String _apiKey =
+      'AIzaSyBVEKVP6fwVZmsQS1zLC6sYf1Jgc_h0QaY'; // ⭐️ 여기에 실제 API 키 입력
+  static const String _apiUrl =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+
   /// Firestore 'serviceScrapes' 컬렉션의 모든 문서를 읽어와,
   /// Gemini에게 전달할 수 있는 하나의 긴 텍스트(String)로 변환합니다.
   static Future<String> _getAllPlansAsString() async {
-    final scrapesSnapshot = await FirebaseFirestore.instance.collection('serviceScrapes').get();
-    if (scrapesSnapshot.docs.isEmpty) throw Exception("Firestore에 'serviceScrapes' 데이터가 없습니다.");
+    final scrapesSnapshot =
+        await FirebaseFirestore.instance.collection('serviceScrapes').get();
+    if (scrapesSnapshot.docs.isEmpty)
+      throw Exception("Firestore에 'serviceScrapes' 데이터가 없습니다.");
 
     final List<String> allPlansText = [];
 
     String _extractServiceName(Map<String, dynamic> docData, String docId) {
-      return docData['providerId']?.toString() ?? docData['providerID']?.toString() ?? docId;
+      return docData['providerId']?.toString() ??
+          docData['providerID']?.toString() ??
+          docId;
     }
 
     String? _pickFirstNonNull(Map<String, dynamic> m, List<String> keys) {
@@ -31,7 +38,8 @@ class GeminiService {
       final serviceName = _extractServiceName(docData, scrapeDoc.id);
       final plansArray = docData['plans'];
 
-      String category = (docData['serviceType'] as String?)?.toLowerCase() ?? 'unknown';
+      String category =
+          (docData['serviceType'] as String?)?.toLowerCase() ?? 'unknown';
       if (category == 'llm') {
         category = 'ai';
       }
@@ -41,17 +49,23 @@ class GeminiService {
       for (var planData in plansArray) {
         if (planData is! Map<String, dynamic>) continue;
 
-        final planName = _pickFirstNonNull(planData, ['planName', 'name', 'tierName']);
-        final amount = _pickFirstNonNull(planData, ['amount', 'price', 'unitAmount']);
-        final cycle = _pickFirstNonNull(planData, ['cycle', 'period', 'interval', 'billingCycle']) ?? '';
+        final planName =
+            _pickFirstNonNull(planData, ['planName', 'name', 'tierName']);
+        final amount =
+            _pickFirstNonNull(planData, ['amount', 'price', 'unitAmount']);
+        final cycle = _pickFirstNonNull(
+                planData, ['cycle', 'period', 'interval', 'billingCycle']) ??
+            '';
 
         // ✨ 1. Firestore에서 'currency' 필드를 직접 읽어옵니다.
-        final currency = (planData['currency'] as String?)?.toUpperCase() ?? 'KRW';
+        final currency =
+            (planData['currency'] as String?)?.toUpperCase() ?? 'KRW';
 
         if (planName == null || amount == null) continue;
 
         // ✨ 2. Gemini에게 "통화: USD" 또는 "통화: KRW" 정보를 명시적으로 전달합니다.
-        allPlansText.add(" - 서비스: $serviceName, 요금제: $planName, 가격: $amount, 통화: $currency, 주기: $cycle");
+        allPlansText.add(
+            " - 서비스: $serviceName, 요금제: $planName, 가격: $amount, 통화: $currency, 주기: $cycle");
       }
     }
     if (allPlansText.isEmpty) throw Exception("유효한 요금제 정보를 찾을 수 없습니다.");
@@ -68,21 +82,24 @@ class GeminiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "contents": [
-            {"parts": [{"text": prompt}]}
+            {
+              "parts": [
+                {"text": prompt}
+              ]
+            }
           ],
           // JSON 응답을 강제하는 설정
           "generationConfig": {
             "response_mime_type": "application/json",
-            "thinkingConfig":{
-              "thinkingBudget":0
-            }
+            "thinkingConfig": {"thinkingBudget": 0}
           }
         }),
       );
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
-        final content = responseBody['candidates'][0]['content']['parts'][0]['text'];
+        final content =
+            responseBody['candidates'][0]['content']['parts'][0]['text'];
         return jsonDecode(content) as Map<String, dynamic>;
       } else {
         print("Gemini API Error Response: ${response.body}");

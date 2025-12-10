@@ -1,27 +1,26 @@
+/*
+ * 이미지 기반 구독 등록 화면
+ *
+ * [주요 기능]
+ * 1. 이미지 선택: 카메라 촬영 또는 갤러리에서 영수증/결제내역 이미지 선택
+ * 2. AI 분석: Gemini 2.0 Flash API를 통해 이미지에서 구독 정보 자동 추출
+ * 3. 화면 이동: 추출된 정보를 확인 화면(add_subscription_confirm)으로 전달
+ *
+ * [화면 흐름]
+ * 구독 추가 선택 → [현재 화면: 이미지 업로드 & AI 분석] → 구독 정보 확인 → Firestore 저장
+ *
+ * [사용 패키지]
+ * - image_picker: 카메라/갤러리 이미지 선택
+ * - gemini_ocr_service: Gemini 2.0 Flash API 호출 및 JSON 파싱
+ * ---------------------------------------------------------------------------
+ */
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../routes/app_router.dart';
-
-/// OCR -> 결과 수정 화면으로 이동할 때 사용할 라우터
-/// (나중에 AppRouter에 등록)
-class OCRResult {
-  final String rawText;
-  final String serviceName;
-  final int amount;
-  final String currency;
-  final DateTime paidAt;
-  final String periodText;
-
-  OCRResult({
-    required this.rawText,
-    required this.serviceName,
-    required this.amount,
-    required this.currency,
-    required this.paidAt,
-    required this.periodText,
-  });
-}
+import '../../model/ocr_result.dart';
+import '../../services/gemini_ocr_service.dart';
 
 class AddSubscriptionOCRScreen extends StatefulWidget {
   const AddSubscriptionOCRScreen({super.key});
@@ -35,7 +34,6 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
   File? _selectedImage;
   bool _loading = false;
 
-  // 이미지 피커
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
@@ -45,32 +43,34 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
     setState(() => _selectedImage = File(picked.path));
   }
 
+  // Gemini API 호출 -> 다음 화면으로 이동
   Future<void> _runOCR() async {
     if (_selectedImage == null) return;
 
     setState(() => _loading = true);
 
-    /// 실제 Document AI / Gemini OCR 호출은 나중에 구현
-    /// 지금은 1초 후 더미 데이터 반환
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Gemini API 호출
+      final ocrResult = await GeminiOCRService.extract(_selectedImage!);
 
-    final dummy = OCRResult(
-      rawText: """
-넷플릭스 정기결제
-15,500원
-결제일: 2025-01-05
-""",
-      serviceName: "Netflix",
-      amount: 15500,
-      currency: "KRW",
-      paidAt: DateTime(2025, 1, 5),
-      periodText: "월간 구독",
-    );
-
-    setState(() => _loading = false);
-
-    // 결과 수정 화면으로 이동
-    Navigator.pushNamed(context, "/add-subscription-confirm", arguments: dummy);
+      // 다음 화면으로 이동 (ocrResult 그대로 전달)
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          Routes.addSubscriptionConfirm,
+          arguments: ocrResult,
+        );
+      }
+    } catch (e) {
+      print("OCR 오류: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("이미지에서 정보를 추출하지 못했습니다. 다시 시도해주세요.")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -165,10 +165,6 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
       ),
     );
   }
-
-  // ------------------------------
-  // UI 파트
-  // ------------------------------
 
   Widget _emptyPreview() {
     return Container(
