@@ -84,11 +84,10 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
         elevation: 0,
         centerTitle: true,
         title: const Text(
-          "OCR로 자동 등록",
+          "이미지로 간편 등록",
           style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
         ),
       ),
-
       body: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         child: Column(
@@ -153,7 +152,7 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
                       ),
                     )
                   : const Text(
-                      "OCR 분석하기",
+                      "분석하기",
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,

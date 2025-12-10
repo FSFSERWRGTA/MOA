@@ -174,7 +174,7 @@ class _AddSubscriptionManualScreenState
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
           children: [
             const Text(
-              "OCR 없이 직접 입력하여 구독을 등록할 수 있어요.",
+              "직접 입력하여 구독을 등록할 수 있어요.",
               style:
                   TextStyle(fontSize: 14, color: Colors.black54, height: 1.4),
             ),

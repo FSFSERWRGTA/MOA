@@ -38,7 +38,7 @@ class AddSubscriptionStartScreen extends StatelessWidget {
             _OptionButton(
               icon: Icons.document_scanner_outlined,
               title: "영수증 / 결제내역 캡처로 자동 등록",
-              subtitle: "OCR로 금액·설명·날짜를 자동 추출해요",
+              subtitle: "금액·설명·날짜를 자동 추출해요",
               onTap: () {
                 Navigator.pushNamed(context, Routes.addSubscriptionOCR);
               },

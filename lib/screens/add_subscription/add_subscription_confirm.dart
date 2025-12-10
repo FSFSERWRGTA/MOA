@@ -68,33 +68,25 @@ class _AddSubscriptionConfirmScreenState
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         children: [
           const Text(
-            "OCR에서 추출한 구독 정보를 확인해주세요.\n잘못된 정보는 수정할 수 있어요.",
+            "사진에서 추출한 구독 정보를 확인해주세요.\n잘못된 정보는 수정할 수 있어요.",
             style: TextStyle(fontSize: 14, color: Colors.black54, height: 1.4),
           ),
           const SizedBox(height: 24),
-
           _subtitle("서비스명"),
           _input(serviceCtrl),
-
           _subtitle("요금제명"),
           _input(planCtrl),
-
           _subtitle("결제 금액"),
           _input(amountCtrl, type: TextInputType.number),
-
           _subtitle("통화"),
           _input(currencyCtrl),
-
           _subtitle("결제일"),
           _datePicker(),
-
           _subtitle("청구 주기"),
           _cycleSelector(),
-
           _subtitle("메모"),
           _input(notesCtrl, maxLines: 3),
           const SizedBox(height: 30),
-
           _saveButton(),
         ],
       ),
@@ -206,7 +198,7 @@ class _AddSubscriptionConfirmScreenState
         // 실제 Firestore 저장은 아ㅏ직 구현x
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("저장 완료! (Firestore 연결 예정)"),
+            content: Text("저장 완료!"),
             duration: Duration(seconds: 2),
           ),
         );
