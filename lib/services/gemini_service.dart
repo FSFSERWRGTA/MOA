@@ -6,7 +6,7 @@ class GeminiService {
   static const String _apiKey = 'AIzaSyBVEKVP6fwVZmsQS1zLC6sYf1Jgc_h0QaY';
 
   static final _model = GenerativeModel(
-    model: 'gemini-flash-latest',
+    model: 'gemini-2.0-flash',
     apiKey: _apiKey,
     generationConfig: GenerationConfig(responseMimeType: 'application/json'),
   );
