@@ -101,19 +101,33 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           userSubscriptionsText: userSubscriptionsText,
           currentTotalSpending: thisMonthSpending,
         );
+        final currentUserServicesInCategory = userSubsList
+            .where((sub) => sub.serviceType.toLowerCase() == _selectedCategory)
+            .map((sub) => sub.serviceId.toLowerCase())
+            .toSet();
 
-        final newCheaperPlans = (result['cheaperPlans'] as List? ?? [])
-            .map((p) => _RecommendedPlan.fromJson(p as Map<String, dynamic>))
-            .toList();
-        final newAlternativeServices = (result['alternativeServices'] as List? ?? [])
-            .map((p) => _RecommendedPlan.fromJson(p as Map<String, dynamic>))
-            .toList();
+        final allSuggestedPlans = [
+          ...(result['cheaperPlans'] as List? ?? []).map((p) => _RecommendedPlan.fromJson(p as Map<String, dynamic>)),
+          ...(result['alternativeServices'] as List? ?? []).map((p) => _RecommendedPlan.fromJson(p as Map<String, dynamic>)),
+        ];
+
+        List<_RecommendedPlan> finalCheaperPlans = [];
+        List<_RecommendedPlan> finalAlternativeServices = [];
+
+        for (final plan in allSuggestedPlans) {
+          if (currentUserServicesInCategory.contains(plan.serviceName.toLowerCase())) {
+            finalCheaperPlans.add(plan);
+          } else {
+            finalAlternativeServices.add(plan);
+          }
+        }
+
         final estimatedSavings = result['estimatedMonthlySavings'] ?? 0;
 
         if (mounted) {
           setState(() {
-            _cheaperPlans = newCheaperPlans;
-            _alternativeServices = newAlternativeServices;
+            _cheaperPlans = finalCheaperPlans;
+            _alternativeServices = finalAlternativeServices;
             savingIfSwitched = estimatedSavings is int
                 ? estimatedSavings
                 : int.tryParse(estimatedSavings.toString()) ?? 0;
@@ -148,6 +162,13 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         _error == null &&
         _cheaperPlans.isEmpty &&
         _alternativeServices.isEmpty;
+
+    final bool isAlreadyOnCheapestPlan = !_isLoading &&
+        _error == null &&
+        _selectedMode == '현재 구독을 더 저렴하게' &&
+        _subscribedCategories.contains(_selectedCategory) &&
+        _cheaperPlans.isEmpty &&
+        _alternativeServices.isNotEmpty;
 
     return Scaffold(
       backgroundColor: appBg,
@@ -211,20 +232,39 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               child: Center(child: Text("이 조건에 맞는 추천 항목이 없습니다.")),
             )
             else ...[
-
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 24.0),
-                  child: _RecommendationGroup(
-                    title: '같은 서비스의 더 저렴한 플랜',
-                    subtitle: '지금 사용하는 서비스 안에서 요금제만 가볍게 조정해요.',
-                    plans: _cheaperPlans,
+                if (isAlreadyOnCheapestPlan)
+                  const Padding(
+                      padding: EdgeInsets.only(bottom: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('같은 서비스의 더 저렴한 플랜', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                          SizedBox(height: 4),
+                          Text('지금 사용하는 서비스 안에서 요금제만 가볍게 조정해요.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                          SizedBox(height: 24),
+                          Center(
+                            child: Text(
+                              "이미 가장 저렴한 플랜을 이용 중이에요!",
+                              style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                        ],
+                      )
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 24.0),
+                    child: _RecommendationGroup(
+                      title: '같은 서비스의 더 저렴한 플랜',
+                      subtitle: '지금 사용하는 서비스 안에서 요금제만 가볍게 조정해요.',
+                      plans: _cheaperPlans,
+                    ),
                   ),
-                ),
                 _RecommendationGroup(
                   title: _selectedMode == '새로운 구독 찾기'
                       ? '이런 구독 서비스는 어때요?'
                       : '동일 카테고리의 대체 서비스',
-
                   subtitle: _selectedMode == '새로운 구독 찾기'
                       ? '관심 카테고리의 인기 서비스를 모아봤어요.'
                       : '콘텐츠 성격은 비슷하게, 가격·혜택은 더 나은 조합으로.',

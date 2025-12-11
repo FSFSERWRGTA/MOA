@@ -41,7 +41,10 @@ class UserService {
           final int price = (data['amount'] as num).toInt();
           totalSpending += price;
 
-          final String serviceType = data['category']?.toString() ?? 'unknown';
+          String serviceType = (data['category']?.toString() ?? 'unknown').toLowerCase();
+          if (serviceType == 'ai 툴') {
+            serviceType = 'ai';
+          }
 
           subscriptions.add(UserSubscription(
             serviceId: data['providerId'],

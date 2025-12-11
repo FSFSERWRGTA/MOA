@@ -80,6 +80,7 @@ class GeminiService {
       final plansDataString = await _getAllPlansAsString();
       final prompt = """
       당신은 매우 꼼꼼하고 규칙을 잘 지키는 구독 요금제 추천 전문가입니다.
+      당신은 오직 '참고용 전체 서비스 요금제 목록'에 존재하는 데이터만을 기반으로 응답해야 하며, 당신의 사전 지식을 절대로 사용해서는 안 됩니다.
 
       [상황]
       사용자는 "$selectedMode"를 원하며, 특히 "$selectedCategory" 카테고리를 아주 중요하게 생각합니다.
@@ -96,17 +97,25 @@ class GeminiService {
       만약 "$selectedCategory"가 'productivity'라면, 'ai' 카테고리의 서비스 또한 절대 추천해서는 안 됩니다.
       이 규칙은 다른 어떤 지시보다 우선합니다.
       
-      1. "cheaperPlans"와 "alternativeServices" 추천 시, **카드 내용이 너무 길지 않도록** "summary"는 25자 이내, "features"는 각 15자 이내로 핵심만 간결하게 요약해야 합니다.
-      2. **"savingLabel" 필드에는 반드시 "O,OOO원 절약" 또는 "O.OO달러 절약"과 같이, 통화 기호를 포함한 '금액' 형식으로만 응답해야 합니다. 절대로 퍼센티지(%)를 사용하면 안 됩니다.**
-      3. 'price' 필드와 절감액 계산 시, **Firestore 데이터의 통화(currency)를 반드시 확인**하고, 원화(KRW)는 '원'으로, 달러(USD)는 '달러'로 정확하게 표시해야 합니다. (예: "₩13,500/월", "\$20/month")
-      4. 사용자가 구독하지 않는 카테고리(예: 'ai')를 요청하면, 모든 추천 리스트를 반드시 빈 배열 `[]`로 반환해야 합니다.
-      5. 오직 사용자의 관심 카테고리인 "$selectedCategory"와 관련된 서비스만 추천해야 합니다. 절대로 다른 카테고리의 서비스를 추천해서는 안 됩니다.
-   
-
+      1. "cheaperPlans" 목록 생성 규칙:
+         - 먼저, 사용자가 현재 구독 중인 서비스의 이름을 확인합니다. (예: 'Netflix', 'Gemini')
+         - '[참고용 전체 서비스 요금제 목록 (Source of Truth)]'에서 **이름이 동일한 서비스**를 찾습니다.
+         - 그 서비스의 요금제들 중에서, **사용자가 현재 내는 가격보다 저렴한 요금제가 있다면** 그 요금제를 "cheaperPlans" 목록에 추가합니다.
+         - 이 규칙은 "alternativeServices" 추천보다 항상 우선되어야 합니다. 
+      2. "cheaperPlans"와 "alternativeServices" 추천 시, **카드 내용이 너무 길지 않도록** "summary"는 25자 이내, "features"는 각 15자 이내로 핵심만 간결하게 요약해야 합니다.
+      3. **"savingLabel" 필드에는 반드시 "O,OOO원 절약" 또는 "O.OO달러 절약"과 같이, 통화 기호를 포함한 '금액' 형식으로만 응답해야 합니다. 절대로 퍼센티지(%)를 사용하면 안 됩니다.**
+      4. 'price' 필드와 절감액 계산 시, **Firestore 데이터의 통화(currency)를 반드시 확인**하고, 원화(KRW)는 '원'으로, 달러(USD)는 '달러'로 정확하게 표시해야 합니다. (예: "₩13,500/월", "\$20/month")
+      5. 사용자가 구독하지 않는 카테고리(예: 'ai')를 요청하면, 모든 추천 리스트를 반드시 빈 배열 `[]`로 반환해야 합니다.
+      6. 오직 사용자의 관심 카테고리인 "$selectedCategory"와 관련된 서비스만 추천해야 합니다. 절대로 다른 카테고리의 서비스를 추천해서는 안 됩니다.
+      7. "estimatedMonthlySavings" 계산 시, 아래의 단계를 **반드시, 그리고 정확하게** 따라야 합니다.
+         가. 당신이 생성한 "cheaperPlans" 목록과 "alternativeServices" 목록에 있는 **모든 추천 카드 각각의 '절약 금액'을 먼저 계산**합니다. ('절약 금액' = '사용자의 현재 카테고리 총 지출액' - '추천 카드의 가격')
+         나. (가)에서 계산한 여러 '절약 금액'들 중에서 **가장 큰 숫자 하나**를 찾습니다.
+         다. 바로 그 가장 큰 '절약 금액'을 "estimatedMonthlySavings"의 값으로 반환합니다. 이 값은 반드시 다른 계산 없이, 가장 큰 개별 절약 금액 그 자체여야 합니다.
+     
       [JSON 응답 형식]
       - "cheaperPlans", "alternativeServices", "estimatedMonthlySavings" 3개의 키를 포함.
       - 추천 항목이 없으면 반드시 빈 리스트 `[]`를 값으로 반환.
-      - "estimatedMonthlySavings"는 절감 가능한 월 예상 금액 (숫자, 원화 기준).
+      - "estimatedMonthlySavings"는 위 지시에 따라 계산된 **최대 월 절감 예상 금액** (숫자, 원화 기준).
       - 각 추천 객체는 "logoLetter", "serviceName", "price", "savingLabel", "summary", "features" 키를 가집니다.
       - "savingPercent" 키는 이제 사용하지 않으므로, 응답에 포함하지 마세요.
 
