@@ -1,24 +1,30 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSyBVEKVP6fwVZmsQS1zLC6sYf1Jgc_h0QaY';
+  static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 
-  static final _model = GenerativeModel(
-    model: 'gemini-2.0-flash',
-    apiKey: _apiKey,
-    generationConfig: GenerationConfig(responseMimeType: 'application/json'),
-  );
+  static GenerativeModel get _model => GenerativeModel(
+        model: 'gemini-2.0-flash',
+        apiKey: _apiKey,
+        generationConfig:
+            GenerationConfig(responseMimeType: 'application/json'),
+      );
 
   static Future<String> _getAllPlansAsString() async {
-    final scrapesSnapshot = await FirebaseFirestore.instance.collection('serviceScrapes').get();
-    if (scrapesSnapshot.docs.isEmpty) throw Exception("Firestore에 'serviceScrapes' 데이터가 없습니다.");
+    final scrapesSnapshot =
+        await FirebaseFirestore.instance.collection('serviceScrapes').get();
+    if (scrapesSnapshot.docs.isEmpty)
+      throw Exception("Firestore에 'serviceScrapes' 데이터가 없습니다.");
 
     final List<String> allPlansText = [];
 
     String _extractServiceName(Map<String, dynamic> docData, String docId) {
-      return docData['providerId']?.toString() ?? docData['providerID']?.toString() ?? docId;
+      return docData['providerId']?.toString() ??
+          docData['providerID']?.toString() ??
+          docId;
     }
 
     String? _pickFirstNonNull(Map<String, dynamic> m, List<String> keys) {
@@ -33,7 +39,8 @@ class GeminiService {
       final serviceName = _extractServiceName(docData, scrapeDoc.id);
       final plansArray = docData['plans'];
 
-      String category = (docData['serviceType'] as String?)?.toLowerCase() ?? 'unknown';
+      String category =
+          (docData['serviceType'] as String?)?.toLowerCase() ?? 'unknown';
       if (category == 'llm') {
         category = 'ai';
       }
@@ -43,14 +50,20 @@ class GeminiService {
       for (var planData in plansArray) {
         if (planData is! Map<String, dynamic>) continue;
 
-        final planName = _pickFirstNonNull(planData, ['planName', 'name', 'tierName']);
-        final amount = _pickFirstNonNull(planData, ['amount', 'price', 'unitAmount']);
-        final cycle = _pickFirstNonNull(planData, ['cycle', 'period', 'interval', 'billingCycle']) ?? '';
-        final currency = (planData['currency'] as String?)?.toUpperCase() ?? 'KRW';
+        final planName =
+            _pickFirstNonNull(planData, ['planName', 'name', 'tierName']);
+        final amount =
+            _pickFirstNonNull(planData, ['amount', 'price', 'unitAmount']);
+        final cycle = _pickFirstNonNull(
+                planData, ['cycle', 'period', 'interval', 'billingCycle']) ??
+            '';
+        final currency =
+            (planData['currency'] as String?)?.toUpperCase() ?? 'KRW';
 
         if (planName == null || amount == null) continue;
 
-        allPlansText.add(" - 서비스: $serviceName, 카테고리: $category, 요금제: $planName, 가격: $amount, 통화: $currency, 주기: $cycle");
+        allPlansText.add(
+            " - 서비스: $serviceName, 카테고리: $category, 요금제: $planName, 가격: $amount, 통화: $currency, 주기: $cycle");
       }
     }
     if (allPlansText.isEmpty) throw Exception("유효한 요금제 정보를 찾을 수 없습니다.");

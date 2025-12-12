@@ -27,11 +27,12 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../model/ocr_result.dart';
 
 class GeminiOCRService {
-  static const String _apiKey = "AIzaSyBVEKVP6fwVZmsQS1zLC6sYf1Jgc_h0QaY";
+  static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
   static const String _apiUrl =
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
