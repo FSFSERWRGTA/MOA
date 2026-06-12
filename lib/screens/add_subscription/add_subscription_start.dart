@@ -25,7 +25,8 @@ class AddSubscriptionStartScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
         ),
       ),
-      body: Padding(
+      body: SafeArea(
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,6 +63,7 @@ class AddSubscriptionStartScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

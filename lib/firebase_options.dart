@@ -50,11 +50,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB2WPcflaIRWlmyAIjESmGWPRFcRxXbkoo',
-    appId: '1:1079928742403:android:4cb89f1b6cb8e20e6b2436',
-    messagingSenderId: '1079928742403',
-    projectId: 'sesac-hyeeun-jo',
-    storageBucket: 'sesac-hyeeun-jo.firebasestorage.app',
+    apiKey: 'AIzaSyB2oQ1pqmXndKKXBNRtSoywJA0uctG3-54',
+    appId: '1:678664566391:android:6261fa203c8930c8507872',
+    messagingSenderId: '678664566391',
+    projectId: 'moaproject-1b718',
+    storageBucket: 'moaproject-1b718.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -62,8 +62,8 @@ class DefaultFirebaseOptions {
     appId: '1:1079928742403:ios:77ff5f21cc843f226b2436',
     messagingSenderId: '1079928742403',
     projectId: 'sesac-hyeeun-jo',
-    storageBucket: 'sesac-hyeeun-jo.firebasestorage.app',
-    iosBundleId: 'com.example.moaApp',
+    storageBucket: ',sesac-hyeeun-jo.firebasestorage.app',
+      iosBundleId: 'com.example.moaApp'
   );
 
   static const FirebaseOptions macos = FirebaseOptions(

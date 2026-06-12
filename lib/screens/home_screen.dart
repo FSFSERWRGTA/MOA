@@ -15,7 +15,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import '../routes/app_router.dart';
 import '../user_state.dart';
 
@@ -277,16 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ---- 포맷 유틸 ----
-  String _formatWon(int v) {
-    final s = v.toString();
-    final buf = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      buf.write(s[i]);
-      final left = s.length - i - 1;
-      if (left % 3 == 0 && left != 0) buf.write(',');
-    }
-    return '₩${buf.toString()}';
-  }
+  String _formatWon(int v) => '${v.toStringAsFixed(2)} KRW';
 
   String _formatDate(DateTime d) =>
       '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
@@ -502,8 +492,8 @@ class _UpcomingTile extends StatelessWidget {
           '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     }
 
-    // 금액 콤마 찍기 (17000 -> 17,000)
-    final priceStr = NumberFormat("#,###").format(amount);
+    // 금액 포맷 (17000 -> 17000.00 KRW)
+    final priceStr = amount.toStringAsFixed(2);
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
@@ -529,7 +519,7 @@ class _UpcomingTile extends StatelessWidget {
       subtitle: Text('$dateStr • $planName'),
       // 금액
       trailing: Text(
-        '₩$priceStr',
+        '$priceStr KRW',
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
       onTap: () {},

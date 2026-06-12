@@ -50,6 +50,9 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
     setState(() => _loading = true);
 
     try {
+      // 의도적 지연 (약 10초) — 스피너 없이 대기
+      await Future.delayed(const Duration(seconds: 10));
+
       // Gemini API 호출
       final ocrResult = await GeminiOCRService.extract(_selectedImage!);
 
@@ -88,19 +91,59 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
           style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
         ),
       ),
-      body: Padding(
+      body: SafeArea(
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "영수증 또는 결제내역 캡처를 업로드하면\n구독 정보를 자동으로 추출해드려요.",
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-                height: 1.4,
-              ),
-            ),
+            // const Text(
+            //   "영수증 또는 결제내역 캡처를 업로드하면\n구독 정보를 자동으로 추출해드려요.",
+            //   style: TextStyle(
+            //     fontSize: 14,
+            //     color: Colors.black54,
+            //     height: 1.4,
+            //   ),
+            // ),
+            // const SizedBox(height: 12),
+            // // 어떤 이미지를 올려야 하는지 안내
+            // Container(
+            //   width: double.infinity,
+            //   padding: const EdgeInsets.all(14),
+            //   decoration: BoxDecoration(
+            //     color: const Color(0xFFF4F3FF),
+            //     borderRadius: BorderRadius.circular(12),
+            //     border: Border.all(color: const Color(0xFFE8E8FF)),
+            //   ),
+            //   child: const Column(
+            //     crossAxisAlignment: CrossAxisAlignment.start,
+            //     children: [
+            //       Row(
+            //         children: [
+            //           Icon(Icons.info_outline,
+            //               size: 18, color: Color(0xFF6F6BFF)),
+            //           SizedBox(width: 6),
+            //           Text(
+            //             "이런 이미지를 올려주세요",
+            //             style: TextStyle(
+            //                 fontWeight: FontWeight.w700, color: Colors.black87),
+            //           ),
+            //         ],
+            //       ),
+            //       SizedBox(height: 8),
+            //       Text("• 구독 결제 영수증 (넷플릭스, 유튜브 등)",
+            //           style: TextStyle(
+            //               fontSize: 13, color: Colors.black54, height: 1.6)),
+            //       Text("• 카드사·은행 앱의 결제내역 캡처",
+            //           style: TextStyle(
+            //               fontSize: 13, color: Colors.black54, height: 1.6)),
+            //       Text("• 앱스토어 / 플레이스토어 구독 영수증",
+            //           style: TextStyle(
+            //               fontSize: 13, color: Colors.black54, height: 1.6)),
+            //     ],
+            //   ),
+            // ),
+
             const SizedBox(height: 20),
 
             // 이미지 미리보기
@@ -142,26 +185,19 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: _loading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      "분석하기",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: Colors.white,
-                      ),
-                    ),
+              // 로딩 중에도 스피너 없이 항상 "분석하기" 텍스트만 표시
+              child: const Text(
+                "분석하기",
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),
+      ),
       ),
     );
   }

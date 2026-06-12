@@ -181,7 +181,8 @@ class _AddSubscriptionConfirmScreenState
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800),
         ),
       ),
-      body: AbsorbPointer(
+      body: SafeArea(
+        child: AbsorbPointer(
         absorbing: _isSaving,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -217,6 +218,7 @@ class _AddSubscriptionConfirmScreenState
             _saveButton(),
           ],
         ),
+      ),
       ),
     );
   }

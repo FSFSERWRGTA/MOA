@@ -602,7 +602,7 @@ class _PriceChangeCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "${formatter.format(item.oldPrice)}원",
+                        "${item.oldPrice.toStringAsFixed(2)} KRW",
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -645,7 +645,7 @@ class _PriceChangeCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "${formatter.format(item.newPrice)}원",
+                        "${item.newPrice.toStringAsFixed(2)} KRW",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
@@ -681,7 +681,7 @@ class _PriceChangeCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  "월 ${formatter.format(diff)}원 ${trendLabel}",
+                  "월 ${diff.toStringAsFixed(2)} KRW ${trendLabel}",
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,

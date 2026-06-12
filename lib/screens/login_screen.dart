@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../routes/app_router.dart';
 import '../user_state.dart';
+import '../utils/password.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // 로딩 상태를 관리할 변수
   bool _isLoading = false;
+
+  // 로그인 화면에 들어올 때마다(로그아웃 후 재진입 포함) 처음 N번은 무조건 실패시킴.
+  // static 이 아니므로 화면이 새로 생성될 때마다 0으로 리셋됨.
+  int _loginAttempts = 0;
+  static const int _forcedFailCount = 3;
 
   // 로딩 중이 아닐 때만 버튼이 활성화되도록 수정
   bool get _isValid =>
@@ -196,6 +202,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
+    // 의도적으로 처음 2번은 로그인 실패 처리
+    _loginAttempts++;
+    if (_loginAttempts <= _forcedFailCount) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인에 실패했습니다')),
+        );
+        // 실패 시 입력값 초기화 (처음부터 다시 입력)
+        _idCtrl.clear();
+        _pwCtrl.clear();
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+
     try {
       final enteredId = _idCtrl.text.trim();
       final enteredPassword = _pwCtrl.text.trim();
@@ -209,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userDoc.exists) {
         // 문서가 존재하면, 저장된 비밀번호와 입력된 비밀번호를 비교
         final storedPassword = userDoc.data()?['passwd'];
-        if (storedPassword == enteredPassword) {
+        if (storedPassword == hashPassword(enteredPassword)) {
           // --- 로그인 성공 ---
           // 로그인 성공 시 전역 변수에 아이디 저장
           UserState.currentUserId = enteredId;
@@ -229,19 +251,16 @@ class _LoginScreenState extends State<LoginScreen> {
       // [디버깅] 오류의 실제 원인을 콘솔에 출력!
       print('로그인 오류 상세: $e');
 
-      String message;
-      // Firebase 관련 오류인지 확인
-      if (e is FirebaseException && e.code == 'permission-denied') {
-        message = 'DB 접근 권한이 없습니다. 보안 규칙을 확인하세요.';
-      } else {
-        // 그 외 모든 오류 (비밀번호 불일치, 사용자 없음, 네트워크 등)
-        message = '아이디 또는 비밀번호가 일치하지 않습니다.';
-      }
+      // 모든 로그인 오류 메시지를 통일
+      const message = '로그인에 실패했습니다';
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );
+        // 실패 시 입력값 초기화 (처음부터 다시 입력)
+        _idCtrl.clear();
+        _pwCtrl.clear();
       }
     } finally {
       // 성공/실패와 관계없이 로딩 상태 해제

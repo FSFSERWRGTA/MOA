@@ -7,7 +7,7 @@ class GeminiService {
   static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 
   static GenerativeModel get _model => GenerativeModel(
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         apiKey: _apiKey,
         generationConfig:
             GenerationConfig(responseMimeType: 'application/json'),
@@ -34,7 +34,37 @@ class GeminiService {
       return null;
     }
 
+    // 같은 서비스 식별 키: providerId 우선, 없으면 docId에서 끝의 _날짜를 떼고
+    // 앞의 'evt_' 접두사도 제거해 비교한다. (예: evt_netflix_20251206 -> netflix)
+    String _serviceKey(Map<String, dynamic> docData, String docId) {
+      var key = (docData['providerId'] ?? docData['providerID'])?.toString();
+      key ??= docId.replaceAll(RegExp(r'_\d{8}$'), '');
+      return key.toLowerCase().replaceFirst(RegExp(r'^evt_'), '');
+    }
+
+    // 정렬용 날짜값: docId 끝의 8자리(_YYYYMMDD)를 우선, 없으면 fetchedAt/createdAt.
+    int _docDate(Map<String, dynamic> docData, String docId) {
+      final m = RegExp(r'(\d{8})$').firstMatch(docId);
+      if (m != null) return int.tryParse(m.group(1)!) ?? 0;
+      final ts = docData['fetchedAt'] ?? docData['createdAt'];
+      if (ts is Timestamp) return ts.millisecondsSinceEpoch ~/ 1000;
+      return 0;
+    }
+
+    // 서비스별로 가장 최신 날짜의 문서 하나만 남긴다. (중복 문서가 있어도 최신 우선)
+    final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> latestByService =
+        {};
     for (var scrapeDoc in scrapesSnapshot.docs) {
+      final key = _serviceKey(scrapeDoc.data(), scrapeDoc.id);
+      final existing = latestByService[key];
+      if (existing == null ||
+          _docDate(scrapeDoc.data(), scrapeDoc.id) >
+              _docDate(existing.data(), existing.id)) {
+        latestByService[key] = scrapeDoc;
+      }
+    }
+
+    for (var scrapeDoc in latestByService.values) {
       final docData = scrapeDoc.data();
       final serviceName = _extractServiceName(docData, scrapeDoc.id);
       final plansArray = docData['plans'];
@@ -71,16 +101,34 @@ class GeminiService {
   }
 
   static Future<Map<String, dynamic>> _callGeminiApi(String prompt) async {
-    try {
-      final response = await _model.generateContent([Content.text(prompt)]);
-      return jsonDecode(response.text!) as Map<String, dynamic>;
-    } on InvalidApiKey catch (e) {
-      print('Gemini SDK Error: API 키가 잘못되었습니다. - $e');
-      rethrow;
-    } catch (e) {
-      print("Gemini SDK 통신 중 오류: $e");
-      rethrow;
+    const maxAttempts = 4;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await _model.generateContent([Content.text(prompt)]);
+        return jsonDecode(response.text!) as Map<String, dynamic>;
+      } on InvalidApiKey catch (e) {
+        print('Gemini SDK Error: API 키가 잘못되었습니다. - $e');
+        rethrow;
+      } catch (e) {
+        // 503/500/429 등 일시적 서버 오류는 잠시 뒤 재시도한다.
+        final msg = e.toString();
+        final isTransient = msg.contains('503') ||
+            msg.contains('UNAVAILABLE') ||
+            msg.contains('high demand') ||
+            msg.contains('overloaded') ||
+            msg.contains('500') ||
+            msg.contains('429');
+        if (isTransient && attempt < maxAttempts) {
+          final delaySec = attempt * 2; // 2s -> 4s -> 6s
+          print("Gemini 일시적 오류, $delaySec초 후 재시도 ($attempt/$maxAttempts): $e");
+          await Future.delayed(Duration(seconds: delaySec));
+          continue;
+        }
+        print("Gemini SDK 통신 중 오류: $e");
+        rethrow;
+      }
     }
+    throw Exception("Gemini 호출에 실패했습니다. (재시도 $maxAttempts회 초과)");
   }
 
   static Future<Map<String, dynamic>> getRecommendations({
@@ -116,8 +164,8 @@ class GeminiService {
          - 그 서비스의 요금제들 중에서, **사용자가 현재 내는 가격보다 저렴한 요금제가 있다면** 그 요금제를 "cheaperPlans" 목록에 추가합니다.
          - 이 규칙은 "alternativeServices" 추천보다 항상 우선되어야 합니다. 
       2. "cheaperPlans"와 "alternativeServices" 추천 시, **카드 내용이 너무 길지 않도록** "summary"는 25자 이내, "features"는 각 15자 이내로 핵심만 간결하게 요약해야 합니다.
-      3. **"savingLabel" 필드에는 반드시 "O,OOO원 절약" 또는 "O.OO달러 절약"과 같이, 통화 기호를 포함한 '금액' 형식으로만 응답해야 합니다. 절대로 퍼센티지(%)를 사용하면 안 됩니다.**
-      4. 'price' 필드와 절감액 계산 시, **Firestore 데이터의 통화(currency)를 반드시 확인**하고, 원화(KRW)는 '원'으로, 달러(USD)는 '달러'로 정확하게 표시해야 합니다. (예: "₩13,500/월", "\$20/month")
+      3. **"savingLabel" 필드에는 반드시 "OOOO.OO KRW 절약" 또는 "OO.OO USD 절약"과 같이, 소수점 두 자리 숫자 뒤에 통화 코드(KRW/USD)를 붙인 '금액' 형식으로만 응답해야 합니다. 절대로 퍼센티지(%)나 쉼표(,)를 사용하면 안 됩니다.**
+      4. 'price' 필드와 절감액 계산 시, **Firestore 데이터의 통화(currency)를 반드시 확인**하고, 금액은 쉼표 없이 소수점 두 자리 숫자 뒤에 통화 코드를 붙여 표시합니다. (예: 원화 "13500.00 KRW/월", 달러 "20.00 USD/month")
       5. 사용자가 구독하지 않는 카테고리(예: 'ai')를 요청하면, 모든 추천 리스트를 반드시 빈 배열 `[]`로 반환해야 합니다.
       6. 오직 사용자의 관심 카테고리인 "$selectedCategory"와 관련된 서비스만 추천해야 합니다. 절대로 다른 카테고리의 서비스를 추천해서는 안 됩니다.
       7. "estimatedMonthlySavings" 계산 시, 아래의 단계를 **반드시, 그리고 정확하게** 따라야 합니다.
@@ -167,7 +215,7 @@ class GeminiService {
       만약 "$selectedCategory"가 'productivity'라면, 'ai' 카테고리의 서비스 또한 절대 추천해서는 안 됩니다.
       이 규칙은 다른 어떤 지시보다 우선합니다.
     
-      1. **'price' 필드에는 Firestore 데이터의 통화(currency)를 반드시 확인하고, 원화(KRW)는 '원'으로, 달러(USD)는 '달러'로 정확하게 표시해야 합니다. (예: "₩9,900/월", "\$20/month")**
+      1. **'price' 필드에는 Firestore 데이터의 통화(currency)를 반드시 확인하고, 금액은 쉼표 없이 소수점 두 자리 숫자 뒤에 통화 코드를 붙여 표시해야 합니다. (예: 원화 "9900.00 KRW/월", 달러 "20.00 USD/month")**
       2. 오직 사용자의 관심 카테고리인 "$selectedCategory"와 관련된 서비스만 추천해야 합니다. 절대로 다른 카테고리의 서비스를 추천해서는 안 됩니다. (예: 'ai'를 요청하면 'Netflix' 추천 금지)
       3. 현재 사용자가 구독하지 않은 구독제를 추천해야 합니다.
       4. 낮은 가격 순으로 구독제를 추천해야합니다.

@@ -4,7 +4,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import '../user_state.dart';
 
@@ -248,7 +247,7 @@ class ReportScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                NumberFormat("#,###").format(totalAmount),
+                totalAmount.toStringAsFixed(2),
                 style: const TextStyle(
                   fontSize: 34,
                   fontWeight: FontWeight.w800,
@@ -261,7 +260,7 @@ class ReportScreen extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.only(bottom: 3),
                 child: Text(
-                  '원',
+                  'KRW',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -452,7 +451,7 @@ class ReportScreen extends StatelessWidget {
                 child: _InsightItem(
                   icon: Icons.payments_rounded,
                   label: '평균 단가',
-                  value: '₩${NumberFormat("#,###").format(avgPerSub)}',
+                  value: '${avgPerSub.toStringAsFixed(2)} KRW',
                 ),
               ),
               Container(
@@ -682,7 +681,7 @@ class _CategoryCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '₩${NumberFormat("#,###").format(amount)}',
+                    '${amount.toStringAsFixed(2)} KRW',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,

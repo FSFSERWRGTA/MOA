@@ -4,8 +4,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import '../routes/app_router.dart';
+import 'coming_soon_screen.dart';
+import 'profile_edit_screen.dart';
 import '../user_state.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -63,9 +64,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // 금액 포맷팅 (예: 13,500원)
+  // 금액 포맷팅 (예: 13500.00 KRW)
   String _formatWon(int v) {
-    return NumberFormat("#,###").format(v) + '원';
+    return '${v.toStringAsFixed(2)} KRW';
   }
 
   @override
@@ -131,10 +132,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // 사용자 헤더
               _HeaderCard(
                 name: userName,
-                onEdit: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('프로필 편집 준비 중')),
+                onEdit: () async {
+                  final changed = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProfileEditScreen(),
+                    ),
                   );
+                  // 수정 후 돌아오면 프로필 새로고침
+                  if (changed == true && mounted) setState(() {});
                 },
               ),
               const SizedBox(height: 16),
@@ -183,7 +189,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               const _SectionHeader(title: '지원'),
               _RowTile(
-                  icon: Icons.help_outline, title: '도움말 / 피드백', onTap: () {}),
+                  icon: Icons.help_outline,
+                  title: '도움말 / 피드백',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const ComingSoonScreen(title: '도움말 / 피드백'),
+                      ),
+                    );
+                  }),
 
               // 로그아웃 기능
               _RowTile(

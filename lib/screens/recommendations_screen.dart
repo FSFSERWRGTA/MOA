@@ -20,6 +20,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
 
   List<_RecommendedPlan> _cheaperPlans = [];
   List<_RecommendedPlan> _alternativeServices = [];
+  _RecommendedPlan? _selectedPlan;
 
   int thisMonthSpending = 0;
   int savingIfSwitched = 0;
@@ -131,6 +132,12 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             savingIfSwitched = estimatedSavings is int
                 ? estimatedSavings
                 : int.tryParse(estimatedSavings.toString()) ?? 0;
+            // 제일 먼저 있는 대체 서비스를 자동 선택
+            _selectedPlan = finalAlternativeServices.isNotEmpty
+                ? finalAlternativeServices.first
+                : (finalCheaperPlans.isNotEmpty
+                    ? finalCheaperPlans.first
+                    : null);
             _listKey = UniqueKey();
           });
         }
@@ -210,8 +217,9 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 24.0), // 아래쪽 여백을 줌
               child: _SavingsSummaryRow(
-                thisMonthSpending: thisMonthSpending,
-                savingIfSwitched: savingIfSwitched,
+                savingText: (_selectedPlan?.savingLabel?.isNotEmpty ?? false)
+                    ? _selectedPlan!.savingLabel!
+                    : '0.00 KRW',
               ),
             ),
 
@@ -259,6 +267,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                       title: '같은 서비스의 더 저렴한 플랜',
                       subtitle: '지금 사용하는 서비스 안에서 요금제만 가볍게 조정해요.',
                       plans: _cheaperPlans,
+                      selectedPlan: _selectedPlan,
+                      onSelect: (p) => setState(() => _selectedPlan = p),
                     ),
                   ),
                 _RecommendationGroup(
@@ -269,6 +279,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                       ? '관심 카테고리의 인기 서비스를 모아봤어요.'
                       : '콘텐츠 성격은 비슷하게, 가격·혜택은 더 나은 조합으로.',
                   plans: _alternativeServices,
+                  selectedPlan: _selectedPlan,
+                  onSelect: (p) => setState(() => _selectedPlan = p),
                 ),
               ],
         ],
@@ -311,7 +323,7 @@ class _PreferenceCard extends StatelessWidget {
   final Set<String> subscribedCategories;
 
   static const _modes = ['현재 구독을 더 저렴하게', '새로운 구독 찾기'];
-  static const _categories = ['ott', 'ai', 'music', 'cloud', 'productivity'];
+  static const _categories = ['ott', 'ai'];
 
   @override
   Widget build(BuildContext context) {
@@ -383,71 +395,56 @@ class _PreferenceCard extends StatelessWidget {
 
 class _SavingsSummaryRow extends StatelessWidget {
   const _SavingsSummaryRow({
-    required this.thisMonthSpending,
-    required this.savingIfSwitched,
+    required this.savingText,
   });
 
-  final int thisMonthSpending;
-  final int savingIfSwitched;
-
-  String _formatWon(int v) {
-    final s = v.toString();
-    final b = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      b.write(s[i]);
-      final left = s.length - i - 1;
-      if (left % 3 == 0 && left != 0) b.write(',');
-    }
-    return '₩${b.toString()}';
-  }
+  final String savingText;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _SummaryPill(label: '이번 달 예상 지출', value: _formatWon(thisMonthSpending))),
-        const SizedBox(width: 12),
-        Expanded(child: _SummaryPill(label: '전환 시 절감 예상액', value: _formatWon(savingIfSwitched), highlight: true)),
-      ],
-    );
-  }
-}
-
-class _SummaryPill extends StatelessWidget {
-  const _SummaryPill({required this.label, required this.value, this.highlight = false});
-  final String label;
-  final String value;
-  final bool highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = highlight ? const Color(0xFF6F6BFF).withOpacity(.08) : Colors.white;
-    final border = highlight ? const Color(0xFF6F6BFF) : _RecommendationsScreenState.divider;
+    // 전환 시 절감 예상액만 크게 표시 (현재 지출/플랜 숨김)
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
-        color: bg,
+        color: const Color(0xFF6F6BFF).withOpacity(.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.03), blurRadius: 10, offset: const Offset(0, 6))],
+        border: Border.all(color: const Color(0xFF6F6BFF)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.1)),
-          const SizedBox(height: 6),
-          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
+          const Text('전환 시 절감 예상액',
+              style: TextStyle(fontSize: 13, color: Colors.black54)),
+          const SizedBox(height: 8),
+          Text(
+            savingText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF6F6BFF)),
+          ),
         ],
       ),
     );
   }
 }
 
+
 class _RecommendationGroup extends StatelessWidget {
-  const _RecommendationGroup({required this.title, required this.subtitle, required this.plans});
+  const _RecommendationGroup({
+    required this.title,
+    required this.subtitle,
+    required this.plans,
+    this.selectedPlan,
+    this.onSelect,
+  });
   final String title;
   final String subtitle;
   final List<_RecommendedPlan> plans;
+  final _RecommendedPlan? selectedPlan;
+  final void Function(_RecommendedPlan)? onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -465,7 +462,11 @@ class _RecommendationGroup extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: plans.length,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, i) => _RecommendationCard(plan: plans[i]),
+            itemBuilder: (context, i) => _RecommendationCard(
+              plan: plans[i],
+              selected: identical(plans[i], selectedPlan),
+              onTap: onSelect == null ? null : () => onSelect!(plans[i]),
+            ),
           ),
         ),
       ],
@@ -524,18 +525,28 @@ class _RecommendedPlan {
 }
 
 class _RecommendationCard extends StatelessWidget {
-  const _RecommendationCard({required this.plan});
+  const _RecommendationCard(
+      {required this.plan, this.selected = false, this.onTap});
   final _RecommendedPlan plan;
+  final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       width: 260,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: selected ? const Color(0xFFF4F3FF) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _RecommendationsScreenState.divider),
+        border: Border.all(
+          color: selected
+              ? const Color(0xFF6F6BFF)
+              : _RecommendationsScreenState.divider,
+          width: selected ? 2 : 1,
+        ),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 10, offset: const Offset(0, 6))],
       ),
       child: Column(
@@ -585,6 +596,7 @@ class _RecommendationCard extends StatelessWidget {
           ),
           const Spacer(),
         ],
+      ),
       ),
     );
   }

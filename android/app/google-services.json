@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "1079928742403",
-    "project_id": "sesac-hyeeun-jo",
-    "storage_bucket": "sesac-hyeeun-jo.firebasestorage.app"
+    "project_number": "678664566391",
+    "project_id": "moaproject-1b718",
+    "storage_bucket": "moaproject-1b718.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1079928742403:android:4cb89f1b6cb8e20e6b2436",
+        "mobilesdk_app_id": "1:678664566391:android:6261fa203c8930c8507872",
         "android_client_info": {
           "package_name": "com.example.moa_app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyB2WPcflaIRWlmyAIjESmGWPRFcRxXbkoo"
+          "current_key": "AIzaSyB2oQ1pqmXndKKXBNRtSoywJA0uctG3-54"
         }
       ],
       "services": {

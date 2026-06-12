@@ -1,5 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../routes/app_router.dart';
+import '../user_state.dart';
+import '../utils/password.dart';
+import 'privacy_policy_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -11,19 +15,26 @@ enum Gender { female, male }
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _idCtrl = TextEditingController();
+  final _pwCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
 
   Gender? _gender;
   DateTime? _birthDate;
   bool _agree = false;
+  bool _submitting = false;
 
   @override
   void dispose() {
+    _idCtrl.dispose();
+    _pwCtrl.dispose();
     _nameCtrl.dispose();
     super.dispose();
   }
 
   bool get _isValid =>
+      _idCtrl.text.trim().isNotEmpty &&
+      _pwCtrl.text.trim().isNotEmpty &&
       _nameCtrl.text.trim().isNotEmpty &&
       _gender != null &&
       _birthDate != null &&
@@ -99,6 +110,29 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            const _FieldLabel('아이디'),
+                            TextFormField(
+                              controller: _idCtrl,
+                              textInputAction: TextInputAction.next,
+                              decoration:
+                                  _inputDecoration(hint: '아이디를 입력해주세요'),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '아이디를 입력해주세요'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            const _FieldLabel('비밀번호'),
+                            TextFormField(
+                              controller: _pwCtrl,
+                              obscureText: true,
+                              textInputAction: TextInputAction.next,
+                              decoration:
+                                  _inputDecoration(hint: '비밀번호를 입력해주세요'),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '비밀번호를 입력해주세요'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
                             const _FieldLabel('이름'),
                             TextFormField(
                               controller: _nameCtrl,
@@ -197,7 +231,13 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // TODO: 약관 페이지 연결
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const PrivacyPolicyScreen(),
+                                      ),
+                                    );
                                   },
                                   child: const Text('보기'),
                                 ),
@@ -212,26 +252,54 @@ class _SignupScreenState extends State<SignupScreen> {
 
                   const SizedBox(height: 16),
 
-                  // 가입 버튼
-                  SizedBox(
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isValid ? _onSubmit : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: purple,
-                        disabledBackgroundColor: const Color(0xFFBFB8FF),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 2,
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                  // 가입 버튼 (왼쪽: 취소 보라 / 오른쪽: 가입하기 빨강)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: purple,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 2,
+                              textStyle: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            child: const Text('취소'),
+                          ),
                         ),
                       ),
-                      child: const Text('가입하기'),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _isValid ? _onSubmit : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF5A5A),
+                              disabledBackgroundColor: const Color(0xFFF7B5B5),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 2,
+                              textStyle: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            child: const Text('가입하기'),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
 
@@ -288,16 +356,54 @@ class _SignupScreenState extends State<SignupScreen> {
     if (picked != null) setState(() => _birthDate = picked);
   }
 
-  void _onSubmit() {
+  Future<void> _onSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_isValid || _submitting) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다!')));
+    setState(() => _submitting = true);
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    final id = _idCtrl.text.trim();
+    final pw = _pwCtrl.text.trim();
+
+    try {
+      final docRef =
+          FirebaseFirestore.instance.collection('users').doc(id);
+
+      // 아이디 중복 확인
+      final existing = await docRef.get();
+      if (existing.exists) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미 사용 중인 아이디입니다.')),
+        );
+        setState(() => _submitting = false);
+        return;
+      }
+
+      // Firestore 저장
+      await docRef.set({
+        'passwd': hashPassword(pw),
+        'name': _nameCtrl.text.trim(),
+        'gender': _gender == Gender.male ? 'male' : 'female',
+        'birthDate': _formatDate(_birthDate!),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // 가입 후 자동 로그인 처리
+      UserState.currentUserId = id;
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('회원가입이 완료되었습니다!')),
+      );
       Navigator.pushReplacementNamed(context, Routes.home);
-    });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('회원가입 실패: $e')),
+      );
+      setState(() => _submitting = false);
+    }
   }
 
   // 공통 인풋 보더

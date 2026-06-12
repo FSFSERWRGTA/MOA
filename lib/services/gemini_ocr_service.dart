@@ -34,7 +34,7 @@ import '../model/ocr_result.dart';
 class GeminiOCRService {
   static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
   static const String _apiUrl =
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
   static Future<String> _encodeImageToBase64(File file) async {
     final bytes = await file.readAsBytes();

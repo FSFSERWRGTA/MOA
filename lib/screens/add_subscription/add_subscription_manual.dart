@@ -71,11 +71,8 @@ class _AddSubscriptionManualScreenState
     super.dispose();
   }
 
-  // 필수 정보가 모두 입력되었는지 확인하는 getter
-  bool get _isFormValid =>
-      serviceCtrl.text.trim().isNotEmpty &&
-      amountCtrl.text.trim().isNotEmpty &&
-      startedAt != null;
+  // 형식 검증 없이 항상 저장 가능 (금액/통화/결제일 미입력 허용)
+  bool get _isFormValid => true;
 
   // 다음 결제일 자동 계산 로직
   DateTime _calculateNextRenewal(DateTime start, String cycle) {
@@ -93,10 +90,38 @@ class _AddSubscriptionManualScreenState
   }
 
   // Firestore 저장 함수
-  Future<void> _saveToFirestore() async {
-    // 버튼이 활성화된 상태에서만 실행되지만, 혹시 모를 안전장치
-    if (!_isFormValid) return;
+  // 입력한 서비스명을 serviceScrapes 카탈로그와 대조해 유사 서비스를 찾는다.
+  // 찾으면 카탈로그의 {providerId, providerName} 반환(정규화용), 없으면 null.
+  Future<Map<String, String>?> _findCatalogService(String typedName) async {
+    final normalized =
+        typedName.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+    if (normalized.length < 2) return null;
+    try {
+      final snap =
+          await FirebaseFirestore.instance.collection('serviceScrapes').get();
+      for (final doc in snap.docs) {
+        final d = doc.data();
+        final pid = (d['providerId'] ?? d['providerID'] ?? doc.id).toString();
+        final pname = (d['providerName'] ?? pid).toString();
+        // 비교 후보: providerId, providerName (공백/언더스코어 제거, 소문자)
+        for (final raw in [pid, pname]) {
+          final c =
+              raw.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+          if (c.length < 2) continue;
+          if (normalized == c ||
+              normalized.contains(c) ||
+              c.contains(normalized)) {
+            return {'providerId': pid, 'providerName': pname};
+          }
+        }
+      }
+    } catch (e) {
+      print('카탈로그 조회 실패: $e');
+    }
+    return null;
+  }
 
+  Future<void> _saveToFirestore() async {
     setState(() => _isSaving = true);
 
     try {
@@ -105,12 +130,20 @@ class _AddSubscriptionManualScreenState
         throw Exception("로그인 정보가 없습니다. 다시 로그인해주세요.");
       }
 
-      final String providerName = serviceCtrl.text.trim();
-      // 대소문자 통일 (NetFlix -> netflix)로 중복 최소화
-      final String providerId = providerName.toLowerCase().replaceAll(' ', '');
-      final double amount = double.tryParse(amountCtrl.text) ?? 0;
+      final String typedName = serviceCtrl.text.trim();
+      // 카탈로그(serviceScrapes)에 동일/유사 서비스가 있으면 그 providerId로 정규화
+      // (예: "ChatGPT Plus" → providerId "chatgpt") → 추천 매칭이 정확해짐
+      final match = await _findCatalogService(typedName);
+      final String providerName = match?['providerName'] ?? typedName;
+      final String providerId =
+          match?['providerId'] ?? typedName.toLowerCase().replaceAll(' ', '');
+      // 형식 검증 없음: 금액/통화/결제일이 비어도 기본값으로 저장
+      final double amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+      final String currency =
+          currencyCtrl.text.trim().isEmpty ? 'KRW' : currencyCtrl.text.trim();
+      final DateTime started = startedAt ?? DateTime.now();
       final DateTime nextRenewal =
-          _calculateNextRenewal(startedAt!, billingCycle);
+          _calculateNextRenewal(started, billingCycle);
 
       final Map<String, dynamic> data = {
         'userId': uid,
@@ -120,10 +153,10 @@ class _AddSubscriptionManualScreenState
         'category': category ?? 'uncategorized',
         'billingCycle': billingCycle,
         'amount': amount,
-        'currency': currencyCtrl.text,
-        'startedAt': Timestamp.fromDate(startedAt!),
+        'currency': currency,
+        'startedAt': Timestamp.fromDate(started),
         'nextRenewalAt': Timestamp.fromDate(nextRenewal),
-        'billingAnchorDay': startedAt!.day,
+        'billingAnchorDay': started.day,
         'status': 'active',
         'source': 'manual',
         'notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
@@ -168,7 +201,8 @@ class _AddSubscriptionManualScreenState
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800),
         ),
       ),
-      body: AbsorbPointer(
+      body: SafeArea(
+        child: AbsorbPointer(
         absorbing: _isSaving,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -187,7 +221,7 @@ class _AddSubscriptionManualScreenState
             ]),
             _section("결제 정보", [
               _label("결제 금액 *"), // 필수 표시
-              _input(amountCtrl, type: TextInputType.number),
+              _input(amountCtrl, type: TextInputType.text),
               _label("통화"),
               _input(currencyCtrl),
               _label("구독 시작일 *"), // 필수 표시
@@ -204,6 +238,7 @@ class _AddSubscriptionManualScreenState
             _saveButton(),
           ],
         ),
+      ),
       ),
     );
   }

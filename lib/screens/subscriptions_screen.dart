@@ -61,12 +61,15 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         }
 
         items.add(_SubItem(
+          doc.id,
           data['providerName'] ?? '이름 없음',
           _formatWon(amount),
           nextRenewalAt != null ? _formatDate(nextRenewalAt) : 'N/A',
           data['planName'] ?? '',
           isActive,
           data['category'] ?? '기타',
+          amount,
+          nextRenewalAt,
         ));
       }
 
@@ -81,17 +84,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     }
   }
 
-  String _formatWon(int v) => NumberFormat("#,###").format(v) + '원';
+  String _formatWon(int v) => '${v.toStringAsFixed(2)} KRW';
   String _formatDate(DateTime d) => DateFormat('MM/dd').format(d);
-  String _dDay(DateTime d) {
-    final today = DateTime.now();
-    final a = DateTime(today.year, today.month, today.day);
-    final b = DateTime(d.year, d.month, d.day);
-    final diff = b.difference(a).inDays;
-    if (diff == 0) return '오늘';
-    if (diff > 0) return 'D-$diff';
-    return 'D+${diff.abs()}';
-  }
 
   int _monthOf(String mmdd) {
     final sp = mmdd.split('/');
@@ -144,14 +138,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
 
           final data = snapshot.data!;
           final List<_SubItem> allItems = data['items'];
-          final int totalSpending = data['totalSpending'];
-          final DateTime? nextBillingDate = data['nextDate'];
 
           return _SubsListBody(
             allItems: allItems,
-            totalSpending: totalSpending,
-            nextBillingDate: nextBillingDate,
-            dDay: nextBillingDate != null ? _dDay(nextBillingDate) : '',
             formatDate: _formatDate,
             formatWon: _formatWon,
             monthOf: _monthOf,
@@ -197,18 +186,12 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
 class _SubsListBody extends StatefulWidget {
   const _SubsListBody({
     required this.allItems,
-    required this.totalSpending,
-    required this.nextBillingDate,
-    required this.dDay,
     required this.formatDate,
     required this.formatWon,
     required this.monthOf,
   });
 
   final List<_SubItem> allItems;
-  final int totalSpending;
-  final DateTime? nextBillingDate;
-  final String dDay;
   final String Function(DateTime) formatDate;
   final String Function(int) formatWon;
   final int Function(String) monthOf;
@@ -223,9 +206,79 @@ class _SubsListBodyState extends State<_SubsListBody> {
   static const String _kDefaultSort = '결제일 빠른순';
   String? _sort = _kDefaultSort;
 
+  late List<_SubItem> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = List<_SubItem>.from(widget.allItems);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SubsListBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.allItems != widget.allItems) {
+      _items = List<_SubItem>.from(widget.allItems);
+    }
+  }
+
+  // 왼쪽 스와이프 시 즉시 삭제 (확인 없음)
+  Future<void> _deleteItem(_SubItem item) async {
+    setState(() => _items.remove(item));
+    try {
+      final uid = UserState.currentUserId;
+      if (uid != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('subscriptions')
+            .doc(item.id)
+            .delete();
+      }
+    } catch (e) {
+      print('구독 삭제 실패: $e');
+    }
+  }
+
+  // _items 기준 실시간 요약 계산 (삭제 즉시 반영)
+  int get _liveActiveCount => _items.where((e) => e.active).length;
+
+  int get _liveMonthSpending {
+    var s = 0;
+    for (final it in _items) {
+      if (it.active) s += it.amount;
+    }
+    return s;
+  }
+
+  DateTime? get _liveNextBilling {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime? next;
+    for (final it in _items) {
+      if (!it.active) continue;
+      final r = it.nextRenewal;
+      if (r == null) continue;
+      var d = r;
+      if (d.isBefore(today)) d = DateTime(now.year + 1, d.month, d.day);
+      if (next == null || d.isBefore(next)) next = d;
+    }
+    return next;
+  }
+
+  String _dDay(DateTime d) {
+    final today = DateTime.now();
+    final a = DateTime(today.year, today.month, today.day);
+    final b = DateTime(d.year, d.month, d.day);
+    final diff = b.difference(a).inDays;
+    if (diff == 0) return '오늘';
+    if (diff > 0) return 'D-$diff';
+    return 'D+${diff.abs()}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final visible = widget.allItems.where((e) {
+    final visible = _items.where((e) {
       final hit = e.name.toLowerCase().contains(_query.toLowerCase());
       final ok = switch (_filter) {
         '전체' => true,
@@ -249,7 +302,7 @@ class _SubsListBodyState extends State<_SubsListBody> {
 
     final now = DateTime.now();
     final Map<String, int> categoryTotals = {};
-    for (final it in widget.allItems) {
+    for (final it in _items) {
       if (!it.active) continue;
       final m = widget.monthOf(it.nextDate);
       if (m != now.month) continue;
@@ -258,18 +311,20 @@ class _SubsListBodyState extends State<_SubsListBody> {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      // 하단 '구독 추가' FAB에 마지막 항목이 가려지지 않도록 여유 패딩
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
       children: [
         const Text('내 구독',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
         _SummaryPanel(
-          monthSpendingText: widget.formatWon(widget.totalSpending),
-          activeCountText: '${widget.allItems.where((e) => e.active).length}개',
-          nextBillingLabel: widget.nextBillingDate != null
-              ? widget.formatDate(widget.nextBillingDate!)
+          monthSpendingText: widget.formatWon(_liveMonthSpending),
+          activeCountText: '$_liveActiveCount개',
+          nextBillingLabel: _liveNextBilling != null
+              ? widget.formatDate(_liveNextBilling!)
               : '없음',
-          nextBillingDday: widget.dDay,
+          nextBillingDday:
+              _liveNextBilling != null ? _dDay(_liveNextBilling!) : '',
           onTapNextBilling: () {},
         ),
         const SizedBox(height: 16),
@@ -284,23 +339,25 @@ class _SubsListBodyState extends State<_SubsListBody> {
           ),
         ),
         const SizedBox(height: 12),
+        // 필터 칩 + 정렬 토글 — 한 줄에 모두 표시
         Row(
           children: [
             _FilterChip(
                 label: '전체',
                 selected: _filter == '전체',
                 onTap: () => setState(() => _filter = '전체')),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _FilterChip(
                 label: '활성',
                 selected: _filter == '활성',
                 onTap: () => setState(() => _filter = '활성')),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _FilterChip(
                 label: '일시중지',
                 selected: _filter == '일시중지',
                 onTap: () => setState(() => _filter = '일시중지')),
             const Spacer(),
+            // 정렬 토글 — 작게, 오른쪽에 배치
             PopupMenuButton<String>(
               tooltip: '정렬',
               onSelected: (v) => setState(() => _sort = v),
@@ -309,11 +366,17 @@ class _SubsListBodyState extends State<_SubsListBody> {
                 PopupMenuItem(value: '가격 높은순', child: Text('가격 높은순')),
                 PopupMenuItem(value: '이름', child: Text('이름'))
               ],
-              child: Row(children: [
-                Text(_sort ?? _kDefaultSort,
-                    style: const TextStyle(color: Colors.black87)),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_drop_down)
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.swap_vert, size: 16, color: Colors.black45),
+                const SizedBox(width: 2),
+                Flexible(
+                  child: Text(_sort ?? _kDefaultSort,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          const TextStyle(fontSize: 13, color: Colors.black54)),
+                ),
+                const Icon(Icons.arrow_drop_down,
+                    size: 18, color: Colors.black45),
               ]),
             ),
           ],
@@ -326,8 +389,22 @@ class _SubsListBodyState extends State<_SubsListBody> {
           _CategoryBars(data: categoryTotals),
           const SizedBox(height: 18),
         ],
-        ...visible
-            .map((e) => _SubCard(item: e, accent: const Color(0xFF6F6BFF))),
+        ...visible.map((e) => Dismissible(
+              key: ValueKey(e.id),
+              direction: DismissDirection.endToStart,
+              onDismissed: (_) => _deleteItem(e),
+              background: Container(
+                alignment: Alignment.centerRight,
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.only(right: 20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B6B),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              child: _SubCard(item: e, accent: const Color(0xFF6F6BFF)),
+            )),
         if (visible.isEmpty)
           Container(
             margin: const EdgeInsets.only(top: 24),
@@ -353,10 +430,12 @@ class _SubsListBodyState extends State<_SubsListBody> {
 /* ================= 위젯들 ================= */
 
 class _SubItem {
-  final String name, price, nextDate, note, category;
+  final String id, name, price, nextDate, note, category;
   final bool active;
-  _SubItem(this.name, this.price, this.nextDate, this.note, this.active,
-      this.category);
+  final int amount; // 합계 재계산용 원본 금액
+  final DateTime? nextRenewal; // 다음 결제일 재계산용 원본 날짜
+  _SubItem(this.id, this.name, this.price, this.nextDate, this.note,
+      this.active, this.category, this.amount, this.nextRenewal);
 }
 
 class _SummaryPanel extends StatelessWidget {
@@ -433,8 +512,13 @@ class _FilterChip extends StatelessWidget {
         onSelected: (_) => onTap(),
         selectedColor: bg,
         backgroundColor: bg,
-        labelStyle:
-            const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+        showCheckmark: false,
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        labelStyle: const TextStyle(
+            fontWeight: FontWeight.w600, color: Colors.black87, fontSize: 13),
         side: BorderSide(color: border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)));
   }
@@ -459,7 +543,7 @@ class _CategoryBars extends StatelessWidget {
             Expanded(
                 child: Text(e.key,
                     style: const TextStyle(fontWeight: FontWeight.w600))),
-            Text('₩${_formatComma(e.value)}',
+            Text('${_formatComma(e.value)} KRW',
                 style: const TextStyle(color: Colors.black54))
           ]),
           const SizedBox(height: 6),
@@ -485,16 +569,7 @@ class _CategoryBars extends StatelessWidget {
     }).toList());
   }
 
-  static String _formatComma(int v) {
-    final s = v.toString();
-    final b = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      b.write(s[i]);
-      final left = s.length - i - 1;
-      if (left % 3 == 0 && left != 0) b.write(',');
-    }
-    return b.toString();
-  }
+  static String _formatComma(int v) => v.toStringAsFixed(2);
 }
 
 class _SubCard extends StatelessWidget {
