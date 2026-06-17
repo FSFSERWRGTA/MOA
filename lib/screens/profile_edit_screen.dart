@@ -20,6 +20,13 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   static const purple = Color(0xFF6F6BFF);
 
   final _nameCtrl = TextEditingController();
+  final _nicknameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _zipCtrl = TextEditingController();
+  final _address1Ctrl = TextEditingController();
+  final _address2Ctrl = TextEditingController();
+  final _jobCtrl = TextEditingController();
   _EditGender? _gender;
   DateTime? _birthDate;
   bool _saving = false;
@@ -27,18 +34,40 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   void initState() {
     super.initState();
-    _nameCtrl.addListener(() => setState(() {}));
+    void rebuild() => setState(() {});
+    _nameCtrl.addListener(rebuild);
+    _nicknameCtrl.addListener(rebuild);
+    _phoneCtrl.addListener(rebuild);
+    _emailCtrl.addListener(rebuild);
+    _zipCtrl.addListener(rebuild);
+    _address1Ctrl.addListener(rebuild);
+    _address2Ctrl.addListener(rebuild);
+    _jobCtrl.addListener(rebuild);
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _nicknameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
+    _zipCtrl.dispose();
+    _address1Ctrl.dispose();
+    _address2Ctrl.dispose();
+    _jobCtrl.dispose();
     super.dispose();
   }
 
   // 모든 항목을 다시 입력해야만 저장 가능 (항목별 편집 불가)
   bool get _isValid =>
       _nameCtrl.text.trim().isNotEmpty &&
+      _nicknameCtrl.text.trim().isNotEmpty &&
+      _phoneCtrl.text.trim().isNotEmpty &&
+      _emailCtrl.text.trim().isNotEmpty &&
+      _zipCtrl.text.trim().isNotEmpty &&
+      _address1Ctrl.text.trim().isNotEmpty &&
+      _address2Ctrl.text.trim().isNotEmpty &&
+      _jobCtrl.text.trim().isNotEmpty &&
       _gender != null &&
       _birthDate != null;
 
@@ -67,6 +96,13 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       if (uid != null) {
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'name': _nameCtrl.text.trim(),
+          'nickname': _nicknameCtrl.text.trim(),
+          'phone': _phoneCtrl.text.trim(),
+          'email': _emailCtrl.text.trim(),
+          'zipCode': _zipCtrl.text.trim(),
+          'address1': _address1Ctrl.text.trim(),
+          'address2': _address2Ctrl.text.trim(),
+          'job': _jobCtrl.text.trim(),
           'gender': _gender == _EditGender.male ? 'male' : 'female',
           'birthDate': _formatDate(_birthDate!),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -112,6 +148,65 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               TextField(
                 controller: _nameCtrl,
                 decoration: _dec('이름을 입력해주세요'),
+              ),
+              const SizedBox(height: 18),
+
+              // 닉네임
+              const _Label('닉네임'),
+              TextField(
+                controller: _nicknameCtrl,
+                decoration: _dec('닉네임을 입력해주세요'),
+              ),
+              const SizedBox(height: 18),
+
+              // 휴대폰 번호
+              const _Label('휴대폰 번호'),
+              TextField(
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: _dec('010-0000-0000'),
+              ),
+              const SizedBox(height: 18),
+
+              // 이메일
+              const _Label('이메일'),
+              TextField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: _dec('example@email.com'),
+              ),
+              const SizedBox(height: 18),
+
+              // 우편번호
+              const _Label('우편번호'),
+              TextField(
+                controller: _zipCtrl,
+                keyboardType: TextInputType.number,
+                decoration: _dec('우편번호 5자리'),
+              ),
+              const SizedBox(height: 18),
+
+              // 주소
+              const _Label('주소'),
+              TextField(
+                controller: _address1Ctrl,
+                decoration: _dec('기본 주소'),
+              ),
+              const SizedBox(height: 18),
+
+              // 상세 주소
+              const _Label('상세 주소'),
+              TextField(
+                controller: _address2Ctrl,
+                decoration: _dec('동/호수 등 상세 주소'),
+              ),
+              const SizedBox(height: 18),
+
+              // 직업
+              const _Label('직업'),
+              TextField(
+                controller: _jobCtrl,
+                decoration: _dec('직업을 입력해주세요'),
               ),
               const SizedBox(height: 18),
 

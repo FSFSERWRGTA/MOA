@@ -5,8 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../routes/app_router.dart';
-import 'coming_soon_screen.dart';
 import 'profile_edit_screen.dart';
+import 'help_screen.dart';
 import '../user_state.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -107,7 +107,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
 
       /* ───────── 본문 (FutureBuilder 적용) ───────── */
-      body: FutureBuilder<Map<String, dynamic>>(
+      body: HelpOverlay(
+        child: FutureBuilder<Map<String, dynamic>>(
         future: _fetchProfileData(), // 데이터 로딩 함수 실행
         builder: (context, snapshot) {
           // 1. 로딩 중
@@ -191,15 +192,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _RowTile(
                   icon: Icons.help_outline,
                   title: '도움말 / 피드백',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const ComingSoonScreen(title: '도움말 / 피드백'),
-                      ),
-                    );
-                  }),
+                  onTap: () => openHelp(context)),
 
               // 로그아웃 기능
               _RowTile(
@@ -219,6 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           );
         },
+      ),
       ),
 
       /* ───────── 하단 NavigationBar ───────── */

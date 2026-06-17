@@ -4,6 +4,7 @@ import '../routes/app_router.dart';
 import '../user_state.dart';
 import '../utils/password.dart';
 import 'privacy_policy_screen.dart';
+import 'help_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -17,28 +18,55 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _idCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
+  final _pwConfirmCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
+  final _nicknameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _zipCtrl = TextEditingController();
+  final _address1Ctrl = TextEditingController();
+  final _address2Ctrl = TextEditingController();
+  final _jobCtrl = TextEditingController();
 
   Gender? _gender;
   DateTime? _birthDate;
   bool _agree = false;
+  bool _agreeMarketing = false;
   bool _submitting = false;
 
   @override
   void dispose() {
     _idCtrl.dispose();
     _pwCtrl.dispose();
+    _pwConfirmCtrl.dispose();
     _nameCtrl.dispose();
+    _nicknameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
+    _zipCtrl.dispose();
+    _address1Ctrl.dispose();
+    _address2Ctrl.dispose();
+    _jobCtrl.dispose();
     super.dispose();
   }
 
   bool get _isValid =>
       _idCtrl.text.trim().isNotEmpty &&
       _pwCtrl.text.trim().isNotEmpty &&
+      _pwConfirmCtrl.text.trim().isNotEmpty &&
+      _pwCtrl.text.trim() == _pwConfirmCtrl.text.trim() &&
       _nameCtrl.text.trim().isNotEmpty &&
+      _nicknameCtrl.text.trim().isNotEmpty &&
+      _phoneCtrl.text.trim().isNotEmpty &&
+      _emailCtrl.text.trim().isNotEmpty &&
+      _zipCtrl.text.trim().isNotEmpty &&
+      _address1Ctrl.text.trim().isNotEmpty &&
+      _address2Ctrl.text.trim().isNotEmpty &&
+      _jobCtrl.text.trim().isNotEmpty &&
       _gender != null &&
       _birthDate != null &&
-      _agree;
+      _agree &&
+      _agreeMarketing;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +83,8 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       ),
       body: SafeArea(
-        child: Center(
+        child: HelpOverlay(
+          child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: ConstrainedBox(
@@ -133,6 +162,24 @@ class _SignupScreenState extends State<SignupScreen> {
                                   : null,
                             ),
                             const SizedBox(height: 16),
+                            const _FieldLabel('비밀번호 확인'),
+                            TextFormField(
+                              controller: _pwConfirmCtrl,
+                              obscureText: true,
+                              textInputAction: TextInputAction.next,
+                              decoration:
+                                  _inputDecoration(hint: '비밀번호를 한 번 더 입력해주세요'),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return '비밀번호를 한 번 더 입력해주세요';
+                                }
+                                if (v.trim() != _pwCtrl.text.trim()) {
+                                  return '비밀번호가 일치하지 않습니다';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
                             const _FieldLabel('이름'),
                             TextFormField(
                               controller: _nameCtrl,
@@ -153,6 +200,88 @@ class _SignupScreenState extends State<SignupScreen> {
                                 }
                                 return null;
                               },
+                            ),
+                            const SizedBox(height: 16),
+                            const _FieldLabel('닉네임'),
+                            TextFormField(
+                              controller: _nicknameCtrl,
+                              textInputAction: TextInputAction.next,
+                              decoration: _inputDecoration(hint: '닉네임을 입력해주세요'),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '닉네임을 입력해주세요'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            const _FieldLabel('휴대폰 번호'),
+                            TextFormField(
+                              controller: _phoneCtrl,
+                              textInputAction: TextInputAction.next,
+                              keyboardType: TextInputType.phone,
+                              decoration:
+                                  _inputDecoration(hint: '010-0000-0000'),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '휴대폰 번호를 입력해주세요'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            const _FieldLabel('이메일'),
+                            TextFormField(
+                              controller: _emailCtrl,
+                              textInputAction: TextInputAction.next,
+                              keyboardType: TextInputType.emailAddress,
+                              decoration:
+                                  _inputDecoration(hint: 'example@email.com'),
+                              validator: (v) {
+                                final value = v?.trim() ?? '';
+                                if (value.isEmpty) return '이메일을 입력해주세요';
+                                if (!value.contains('@') ||
+                                    !value.contains('.')) {
+                                  return '올바른 이메일 형식이 아닙니다';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            const _FieldLabel('우편번호'),
+                            TextFormField(
+                              controller: _zipCtrl,
+                              textInputAction: TextInputAction.next,
+                              keyboardType: TextInputType.number,
+                              decoration: _inputDecoration(hint: '우편번호 5자리'),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '우편번호를 입력해주세요'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            const _FieldLabel('주소'),
+                            TextFormField(
+                              controller: _address1Ctrl,
+                              textInputAction: TextInputAction.next,
+                              decoration: _inputDecoration(hint: '기본 주소'),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '주소를 입력해주세요'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            const _FieldLabel('상세 주소'),
+                            TextFormField(
+                              controller: _address2Ctrl,
+                              textInputAction: TextInputAction.next,
+                              decoration:
+                                  _inputDecoration(hint: '동/호수 등 상세 주소'),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '상세 주소를 입력해주세요'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            const _FieldLabel('직업'),
+                            TextFormField(
+                              controller: _jobCtrl,
+                              textInputAction: TextInputAction.done,
+                              decoration: _inputDecoration(hint: '직업을 입력해주세요'),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '직업을 입력해주세요'
+                                  : null,
                             ),
                             const SizedBox(height: 16),
 
@@ -243,6 +372,23 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ),
                               ],
                             ),
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: _agreeMarketing,
+                                  onChanged: (v) => setState(
+                                      () => _agreeMarketing = v ?? false),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                const Expanded(
+                                  child: Text(
+                                    '[필수] 마케팅 정보 수신에 동의합니다',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 8),
                           ],
                         ),
@@ -322,6 +468,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ),
         ),
+        ),
       ),
     );
   }
@@ -384,8 +531,16 @@ class _SignupScreenState extends State<SignupScreen> {
       await docRef.set({
         'passwd': hashPassword(pw),
         'name': _nameCtrl.text.trim(),
+        'nickname': _nicknameCtrl.text.trim(),
+        'phone': _phoneCtrl.text.trim(),
+        'email': _emailCtrl.text.trim(),
+        'zipCode': _zipCtrl.text.trim(),
+        'address1': _address1Ctrl.text.trim(),
+        'address2': _address2Ctrl.text.trim(),
+        'job': _jobCtrl.text.trim(),
         'gender': _gender == Gender.male ? 'male' : 'female',
         'birthDate': _formatDate(_birthDate!),
+        'agreeMarketing': _agreeMarketing,
         'createdAt': FieldValue.serverTimestamp(),
       });
 

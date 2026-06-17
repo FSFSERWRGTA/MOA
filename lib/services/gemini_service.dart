@@ -177,7 +177,8 @@ class GeminiService {
       - "cheaperPlans", "alternativeServices", "estimatedMonthlySavings" 3개의 키를 포함.
       - 추천 항목이 없으면 반드시 빈 리스트 `[]`를 값으로 반환.
       - "estimatedMonthlySavings"는 위 지시에 따라 계산된 **최대 월 절감 예상 금액** (숫자, 원화 기준).
-      - 각 추천 객체는 "logoLetter", "serviceName", "price", "savingLabel", "summary", "features" 키를 가집니다.
+      - 각 추천 객체는 "logoLetter", "serviceName", "planName", "price", "savingLabel", "summary", "features" 키를 가집니다.
+      - "serviceName"에는 서비스 이름만(예: "ChatGPT", "Netflix"), "planName"에는 해당 요금제/등급 이름만(예: "Go", "Plus", "Premium", "프리미엄")을 넣습니다. 요금제 이름이 따로 없으면 "기본"으로 넣습니다.
       - "savingPercent" 키는 이제 사용하지 않으므로, 응답에 포함하지 마세요.
 
       [요청]
@@ -225,7 +226,8 @@ class GeminiService {
       - 반드시 "suggestions" 라는 하나의 키를 가진 JSON 객체를 반환해야 합니다.
       - "suggestions"의 값은 추천 서비스 객체들의 리스트(배열)입니다.
       - 추천할 항목이 없으면 빈 리스트 `[]`를 반환합니다.
-      - 각 추천 객체는 "logoLetter", "serviceName", "price", "summary", "features", "why" 키를 가져야 합니다.
+      - 각 추천 객체는 "logoLetter", "serviceName", "planName", "price", "summary", "features", "why" 키를 가져야 합니다.
+      - "serviceName"에는 서비스 이름만(예: "ChatGPT", "Netflix"), "planName"에는 해당 요금제/등급 이름만(예: "Go", "Plus", "Premium", "프리미엄")을 넣습니다. 요금제 이름이 따로 없으면 "기본"으로 넣습니다.
       - "savingLabel"과 "savingPercent"는 반드시 빈 문자열 "" 로 설정해야 합니다.
 
       [요청]

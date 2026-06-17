@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../routes/app_router.dart';
 import '../services/user_service.dart';
 import '../services/gemini_service.dart';
+import 'help_screen.dart';
 
 class RecommendationsScreen extends StatefulWidget {
   const RecommendationsScreen({super.key});
@@ -188,7 +189,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         title: const Text('구독 추천', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800, letterSpacing: 0.3)),
         bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider(height: 1, thickness: 1, color: divider)),
       ),
-      body: RefreshIndicator(
+      body: HelpOverlay(
+        child: RefreshIndicator(
         onRefresh: _fetchRecommendations,
         child: ListView(
           key: _listKey,
@@ -285,6 +287,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               ],
         ],
         ),
+      ),
       ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: appBg,
@@ -477,6 +480,7 @@ class _RecommendationGroup extends StatelessWidget {
 class _RecommendedPlan {
   final String logoLetter;
   final String serviceName;
+  final String planName;
   final String price;
   final String? savingLabel;
   final String? savingPercent;
@@ -489,6 +493,7 @@ class _RecommendedPlan {
   _RecommendedPlan({
     required this.logoLetter,
     required this.serviceName,
+    required this.planName,
     required this.price,
     this.savingLabel,
     this.savingPercent,
@@ -514,6 +519,8 @@ class _RecommendedPlan {
     return _RecommendedPlan(
       logoLetter: json['logoLetter']?.toString() ?? '?',
       serviceName: json['serviceName']?.toString() ?? '이름 없음',
+      planName: (json['planName'] ?? json['plan'] ?? json['tierName'] ?? '')
+          .toString(),
       price: json['price']?.toString() ?? '가격 정보 없음',
       savingLabel: json['savingLabel']?.toString() ?? '',
       savingPercent: json['savingPercent']?.toString() ?? '',
@@ -565,7 +572,16 @@ class _RecommendationCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(plan.serviceName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                    // 서비스명 + 요금제명 (예: ChatGPT Go) 모두 보이게 표시
+                    Text(
+                      plan.planName.isNotEmpty
+                          ? '${plan.serviceName} ${plan.planName}'
+                          : plan.serviceName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: 2),
                     Text(plan.price, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.black87)),
                   ],

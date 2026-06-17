@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../routes/app_router.dart';
 import '../user_state.dart';
+import 'help_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -71,7 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-      body: StreamBuilder<QuerySnapshot>(
+      body: HelpOverlay(
+        child: StreamBuilder<QuerySnapshot>(
         // 1. DB에서 '다음 결제일' 순서로 구독 목록 가져오기
         stream: FirebaseFirestore.instance
             .collection('users')
@@ -121,24 +123,24 @@ class _HomeScreenState extends State<HomeScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 2),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('안녕하세요 👋',
                             style: TextStyle(
                                 fontSize: 20, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         const Text('오늘도 구독/지출을 똑똑하게 관리해볼까요?',
                             style: TextStyle(color: Colors.black54)),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 6),
                         const _SearchBar(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 8),
 
-                        // ---- 자동 계산된 값 넣기) 요약 카드 ----
+                        // ---- 요약 카드 (격자 그대로, 위아래로만 살짝 겹침) ----
                         Wrap(
-                          spacing: 10,
-                          runSpacing: 12,
+                          spacing: 4,
+                          runSpacing: 4,
                           children: [
                             _StatCard(
                               title: '이번 달 지출',
@@ -147,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               accent: purple,
                               subtitle: '이번 달 합계',
                               width:
-                                  (MediaQuery.of(context).size.width - 52) / 2,
+                                  (MediaQuery.of(context).size.width - 20) / 2,
                             ),
                             _StatCard(
                               title: '구독 수',
@@ -156,64 +158,79 @@ class _HomeScreenState extends State<HomeScreen> {
                               accent: purple,
                               subtitle: '활성 구독',
                               width:
-                                  (MediaQuery.of(context).size.width - 52) / 2,
+                                  (MediaQuery.of(context).size.width - 20) / 2,
                             ),
-                            _StatCard(
-                              title: '다음 결제',
-                              value: nextBill != null
-                                  ? _formatDate(nextBill)
-                                  : '-', // DB 날짜
-                              icon: Icons.event_available_outlined,
-                              accent: purple,
-                              subtitle:
-                                  nextBill != null ? _dDay(nextBill) : '예정 없음',
-                              width: MediaQuery.of(context).size.width - 40,
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 22),
-                        // 빠른 작업 (버튼 숨김 옵션 적용)
-                        const _SectionHeader(title: '빠른 작업', showMore: false),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _QuickAction(
-                                label: '구독 추가',
-                                icon: Icons.add_circle_outline,
-                                onTap: () => Navigator.pushNamed(
-                                    context, Routes.addSubscription),
+                            // 큰 카드를 위로 살짝 끌어올려 윗줄과 겹침
+                            Transform.translate(
+                              offset: const Offset(0, -12),
+                              child: _StatCard(
+                                title: '다음 결제',
+                                value: nextBill != null
+                                    ? _formatDate(nextBill)
+                                    : '-', // DB 날짜
+                                icon: Icons.event_available_outlined,
+                                accent: purple,
+                                subtitle: nextBill != null
+                                    ? _dDay(nextBill)
+                                    : '예정 없음',
+                                width: MediaQuery.of(context).size.width - 16,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                                child: _QuickAction(
-                                    label: '가격 인상 확인',
-                                    icon: Icons.trending_up_outlined,
-                                    onTap: () {
-                                      Navigator.pushNamed(
-                                          context, Routes.priceReport);
-                                    })),
-                            const SizedBox(width: 12),
-                            Expanded(
-                                child: _QuickAction(
-                                    label: '리포트',
-                                    icon: Icons.bar_chart_outlined,
-                                    onTap: () {
-                                      Navigator.pushNamed(
-                                          context, Routes.report);
-                                    })),
                           ],
                         ),
 
-                        const SizedBox(height: 22),
-                        _SectionHeader(
-                          title: '다가오는 결제',
-                          onTap: () {
-                            Navigator.pushReplacementNamed(
-                                context, Routes.subscriptions);
-                          },
+                        // 빠른 작업 헤더를 위로 살짝 겹침
+                        Transform.translate(
+                          offset: const Offset(0, -18),
+                          child: const _SectionHeader(
+                              title: '빠른 작업', showMore: false),
+                        ),
+
+                        // 빠른 작업 버튼들도 위로 살짝 겹침
+                        Transform.translate(
+                          offset: const Offset(0, -14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _QuickAction(
+                                  label: '구독 추가',
+                                  icon: Icons.add_circle_outline,
+                                  onTap: () => Navigator.pushNamed(
+                                      context, Routes.addSubscription),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                  child: _QuickAction(
+                                      label: '가격 인상 확인',
+                                      icon: Icons.trending_up_outlined,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                            context, Routes.priceReport);
+                                      })),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                  child: _QuickAction(
+                                      label: '리포트',
+                                      icon: Icons.bar_chart_outlined,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                            context, Routes.report);
+                                      })),
+                            ],
+                          ),
+                        ),
+
+                        // 다가오는 결제 헤더도 위로 살짝 겹침
+                        Transform.translate(
+                          offset: const Offset(0, -10),
+                          child: _SectionHeader(
+                            title: '다가오는 결제',
+                            onTap: () {
+                              Navigator.pushReplacementNamed(
+                                  context, Routes.subscriptions);
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -240,11 +257,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: SizedBox(height: 2)),
               ],
             ),
           );
         },
+      ),
       ),
 
       // 하단 네비 + FAB
@@ -341,7 +359,7 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFFF7F7FF),
         borderRadius: BorderRadius.circular(16),
@@ -432,11 +450,11 @@ class _QuickAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: Column(
             children: [
               Icon(icon, color: const Color(0xFF6F6BFF)),
-              const SizedBox(height: 8),
+              const SizedBox(height: 2),
               Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
             ],
           ),
@@ -496,7 +514,9 @@ class _UpcomingTile extends StatelessWidget {
     final priceStr = amount.toStringAsFixed(2);
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      visualDensity: const VisualDensity(vertical: -4),
+      dense: true,
       // 아이콘 박스
       leading: Container(
         width: 44,

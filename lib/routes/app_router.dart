@@ -11,6 +11,7 @@ import '../screens/add_subscription/add_subscription_manual.dart';
 import '../screens/add_subscription/add_subscription_confirm.dart';
 import '../screens/price_change_report_screen.dart';
 import '../screens/report_screen.dart';
+import '../screens/help_screen.dart';
 import '../model/ocr_result.dart';
 
 class Routes {
@@ -26,6 +27,7 @@ class Routes {
   static const addSubscriptionConfirm = '/add-subscription-confirm';
   static const priceReport = '/price-report';
   static const report = '/report';
+  static const help = '/help';
 }
 
 class AppRouter {
@@ -81,6 +83,9 @@ class AppRouter {
 
       case Routes.report:
         return MaterialPageRoute(builder: (_) => const ReportScreen());
+
+      case Routes.help:
+        return MaterialPageRoute(builder: (_) => const HelpScreen());
 
       default:
         return MaterialPageRoute(builder: (_) => const LoginScreen());

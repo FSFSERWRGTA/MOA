@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../routes/app_router.dart';
 import '../user_state.dart';
 import '../utils/password.dart';
+import 'help_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,7 +45,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Center(
+        child: HelpOverlay(
+          child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: ConstrainedBox(
@@ -117,21 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   v!.trim().isEmpty ? '비밀번호를 입력해주세요' : null,
                             ),
                             const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : () {
-                                        // TODO: 비밀번호 찾기 페이지 연결
-                                      },
-                                child: const Text(
-                                  '비밀번호를 잊으셨나요?',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                              ),
-                            ),
-                          ],
+                                                      ],
                         ),
                       ),
                     ),
@@ -185,12 +173,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             : () => Navigator.pushNamed(context, Routes.signup),
                         child: const Text('회원가입'),
                       ),
+                      const SizedBox(width: 4),
                     ],
                   ),
                 ],
               ),
             ),
           ),
+        ),
         ),
       ),
     );

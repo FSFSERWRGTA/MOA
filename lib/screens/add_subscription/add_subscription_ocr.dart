@@ -21,6 +21,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../routes/app_router.dart';
 import '../../model/ocr_result.dart';
 import '../../services/gemini_ocr_service.dart';
+import '../help_screen.dart';
 
 class AddSubscriptionOCRScreen extends StatefulWidget {
   const AddSubscriptionOCRScreen({super.key});
@@ -92,7 +93,8 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: HelpOverlay(
+          child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,6 +199,7 @@ class _AddSubscriptionOCRScreenState extends State<AddSubscriptionOCRScreen> {
             ),
           ],
         ),
+      ),
       ),
       ),
     );

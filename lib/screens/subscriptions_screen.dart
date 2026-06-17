@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../routes/app_router.dart';
 import '../user_state.dart';
+import 'help_screen.dart';
 
 class SubscriptionsScreen extends StatefulWidget {
   const SubscriptionsScreen({super.key});
@@ -124,7 +125,10 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
             preferredSize: Size.fromHeight(1),
             child: Divider(height: 1, thickness: 1, color: divider)),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
+      body: HelpOverlay(
+        // 우하단 '구독 추가' FAB와 겹치지 않도록 위로 띄움
+        bottomOffset: 84,
+        child: FutureBuilder<Map<String, dynamic>>(
         future: _fetchSubsData(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -146,6 +150,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
             monthOf: _monthOf,
           );
         },
+      ),
       ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: appBg,
@@ -389,21 +394,12 @@ class _SubsListBodyState extends State<_SubsListBody> {
           _CategoryBars(data: categoryTotals),
           const SizedBox(height: 18),
         ],
-        ...visible.map((e) => Dismissible(
-              key: ValueKey(e.id),
-              direction: DismissDirection.endToStart,
-              onDismissed: (_) => _deleteItem(e),
-              background: Container(
-                alignment: Alignment.centerRight,
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                padding: const EdgeInsets.only(right: 20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF6B6B),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.delete, color: Colors.white),
-              ),
-              child: _SubCard(item: e, accent: const Color(0xFF6F6BFF)),
+        ...visible.map((e) => _SubCard(
+              item: e,
+              accent: const Color(0xFF6F6BFF),
+              // 삭제·수정 둘 다 삭제로 동작 (수정 눌러도 삭제됨)
+              onDelete: () => _deleteItem(e),
+              onEdit: () => _deleteItem(e),
             )),
         if (visible.isEmpty)
           Container(
@@ -573,9 +569,16 @@ class _CategoryBars extends StatelessWidget {
 }
 
 class _SubCard extends StatelessWidget {
-  const _SubCard({required this.item, required this.accent});
+  const _SubCard({
+    required this.item,
+    required this.accent,
+    required this.onDelete,
+    required this.onEdit,
+  });
   final _SubItem item;
   final Color accent;
+  final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -592,31 +595,73 @@ class _SubCard extends StatelessWidget {
                 blurRadius: 12,
                 offset: const Offset(0, 6))
           ]),
-      child: Row(children: [
-        Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-                color: const Color(0xFFEDEBFF),
-                borderRadius: BorderRadius.circular(12)),
-            child: Icon(Icons.subscriptions_outlined, color: accent)),
-        const SizedBox(width: 12),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(item.name,
-              style:
-                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text(item.note,
-              style: const TextStyle(color: Colors.black54, fontSize: 13))
-        ])),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(item.price, style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('다음 결제: ${item.nextDate}')
-        ]),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFEDEBFF),
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.subscriptions_outlined, color: accent)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(item.name,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(item.note,
+                      style:
+                          const TextStyle(color: Colors.black54, fontSize: 13))
+                ])),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(item.price,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text('다음 결제: ${item.nextDate}')
+            ]),
+          ]),
+          const SizedBox(height: 8),
+          // 오른쪽 아래 작은 (삭제 | 수정) — 둘 다 삭제로 동작
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  onTap: onDelete,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text('삭제',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.black45,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const Text('|',
+                    style: TextStyle(fontSize: 11, color: Colors.black26)),
+                InkWell(
+                  onTap: onEdit,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text('수정',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.black45,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
